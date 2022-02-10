@@ -16,13 +16,6 @@
  */
 package org.apache.rocketmq.broker;
 
-import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.classic.joran.JoranConfigurator;
-import java.io.BufferedInputStream;
-import java.io.FileInputStream;
-import java.io.InputStream;
-import java.util.Properties;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
@@ -43,6 +36,12 @@ import org.apache.rocketmq.store.config.BrokerRole;
 import org.apache.rocketmq.store.config.MessageStoreConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.BufferedInputStream;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.util.Properties;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.rocketmq.remoting.netty.TlsSystemConfig.TLS_ENABLE;
 
@@ -104,7 +103,7 @@ public class BrokerStartup {
 
             nettyClientConfig.setUseTLS(Boolean.parseBoolean(System.getProperty(TLS_ENABLE,
                 String.valueOf(TlsSystemConfig.tlsMode == TlsMode.ENFORCING))));
-            nettyServerConfig.setListenPort(10911);
+            nettyServerConfig.setListenPort(Integer.valueOf(args[4]));
             final MessageStoreConfig messageStoreConfig = new MessageStoreConfig();
 
             if (BrokerRole.SLAVE == messageStoreConfig.getBrokerRole()) {
@@ -113,12 +112,16 @@ public class BrokerStartup {
             }
 
             if (commandLine.hasOption('c')) {
+                //-c E:\xxxx\rocketmq\broker\src\main\resources\broker-b.conf
                 String file = commandLine.getOptionValue('c');
                 if (file != null) {
                     configFile = file;
                     InputStream in = new BufferedInputStream(new FileInputStream(file));
                     properties = new Properties();
                     properties.load(in);
+                    // 配置
+                    //properties.setProperty("storePathRootDir", "E:\\rocketmq\\data\\cluster-1\\broker-a\\store");
+                    //properties.setProperty("storePathCommitLog", "E:\\rocketmq\\data\\cluster-1\\broker-a\\store\\commitlog");
 
                     properties2SystemEnv(properties);
                     MixAll.properties2Object(properties, brokerConfig);
@@ -171,11 +174,11 @@ public class BrokerStartup {
             }
 
             messageStoreConfig.setHaListenPort(nettyServerConfig.getListenPort() + 1);
-            LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
-            JoranConfigurator configurator = new JoranConfigurator();
-            configurator.setContext(lc);
-            lc.reset();
-            configurator.doConfigure(brokerConfig.getRocketmqHome() + "/conf/logback_broker.xml");
+            //LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
+            //JoranConfigurator configurator = new JoranConfigurator();
+            //configurator.setContext(lc);
+            //lc.reset();
+            //configurator.doConfigure(brokerConfig.getRocketmqHome() + "/conf/logback_broker.xml");
 
             if (commandLine.hasOption('p')) {
                 Logger console = LoggerFactory.getLogger(LoggerName.BROKER_CONSOLE_NAME);
