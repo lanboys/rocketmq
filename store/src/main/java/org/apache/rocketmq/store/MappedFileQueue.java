@@ -16,6 +16,9 @@
  */
 package org.apache.rocketmq.store;
 
+import org.apache.rocketmq.common.UtilAll;
+import org.apache.rocketmq.common.constant.LoggerName;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -24,14 +27,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.concurrent.CopyOnWriteArrayList;
-import org.apache.rocketmq.common.UtilAll;
-import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 
 public class MappedFileQueue {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
     private static final InternalLogger LOG_ERROR = InternalLoggerFactory.getLogger(LoggerName.STORE_ERROR_LOGGER_NAME);
+    private static final InternalLogger logger = InternalLoggerFactory.getLogger(LoggerName.BROKER_CONSOLE_NAME);
 
     private static final int DELETE_FILES_BATCH_MAX = 10;
 
@@ -431,6 +433,7 @@ public class MappedFileQueue {
             long where = mappedFile.getFileFromOffset() + offset;
             result = where == this.flushedWhere;
             this.flushedWhere = where;
+            //logger.info("flushedWhere {} mappedFile {}", flushedWhere, mappedFile.getFileName());
             if (0 == flushLeastPages) {
                 this.storeTimestamp = tmpTimeStamp;
             }

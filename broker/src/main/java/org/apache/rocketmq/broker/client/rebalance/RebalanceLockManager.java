@@ -16,16 +16,19 @@
  */
 package org.apache.rocketmq.broker.client.rebalance;
 
+import org.apache.rocketmq.common.constant.LoggerName;
+import org.apache.rocketmq.common.message.MessageQueue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
-import org.apache.rocketmq.common.message.MessageQueue;
 
 public class RebalanceLockManager {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.REBALANCE_LOCK_LOGGER_NAME);
@@ -104,6 +107,7 @@ public class RebalanceLockManager {
             if (lockEntry != null) {
                 boolean locked = lockEntry.isLocked(clientId);
                 if (locked) {
+                    // 更新锁的有效期
                     lockEntry.setLastUpdateTimestamp(System.currentTimeMillis());
                 }
 
@@ -120,7 +124,7 @@ public class RebalanceLockManager {
         Set<MessageQueue> notLockedMqs = new HashSet<MessageQueue>(mqs.size());
 
         for (MessageQueue mq : mqs) {
-            if (this.isLocked(group, mq, clientId)) {
+            if (this.isLocked(group, mq, clientId)) {// 检查自己是否持有锁，是的话还会 更新锁的有效期
                 lockedMqs.add(mq);
             } else {
                 notLockedMqs.add(mq);
@@ -139,7 +143,11 @@ public class RebalanceLockManager {
 
                     for (MessageQueue mq : notLockedMqs) {
                         LockEntry lockEntry = groupValue.get(mq);
+                        // 不为空有可能是：
+                        //          自己持有锁(过期)
+                        //          别人持有锁(过期或未过期)
                         if (null == lockEntry) {
+                            // 还未加锁，加锁成功
                             lockEntry = new LockEntry();
                             lockEntry.setClientId(clientId);
                             groupValue.put(mq, lockEntry);
@@ -150,6 +158,10 @@ public class RebalanceLockManager {
                                 mq);
                         }
 
+                        // 到这里肯定已经加过锁，所以再检查一下是不是自己加锁成功
+                        //          自己刚刚加的锁
+                        //          自己持有锁(过期)
+                        //          别人持有锁(过期或未过期)
                         if (lockEntry.isLocked(clientId)) {
                             lockEntry.setLastUpdateTimestamp(System.currentTimeMillis());
                             lockedMqs.add(mq);
@@ -157,8 +169,10 @@ public class RebalanceLockManager {
                         }
 
                         String oldClientId = lockEntry.getClientId();
-
+                        //          自己持有锁(过期)
+                        //          别人持有锁(过期或未过期)
                         if (lockEntry.isExpired()) {
+                            // 无论谁持有的锁过期了，都可以加锁成功
                             lockEntry.setClientId(clientId);
                             lockEntry.setLastUpdateTimestamp(System.currentTimeMillis());
                             log.warn(
@@ -170,7 +184,7 @@ public class RebalanceLockManager {
                             lockedMqs.add(mq);
                             continue;
                         }
-
+                        //          别人持有锁(未过期)
                         log.warn(
                             "tryLockBatch, message queue locked by other client. Group: {} OtherClientId: {} NewClientId: {} {}",
                             group,

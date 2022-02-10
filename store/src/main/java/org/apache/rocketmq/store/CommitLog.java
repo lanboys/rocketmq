@@ -16,13 +16,6 @@
  */
 package org.apache.rocketmq.store;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import org.apache.rocketmq.common.ServiceThread;
 import org.apache.rocketmq.common.UtilAll;
 import org.apache.rocketmq.common.constant.LoggerName;
@@ -39,6 +32,14 @@ import org.apache.rocketmq.store.config.FlushDiskType;
 import org.apache.rocketmq.store.ha.HAService;
 import org.apache.rocketmq.store.schedule.ScheduleMessageService;
 
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
 /**
  * Store all metadata downtime for recovery, data protection reliability
  */
@@ -46,13 +47,23 @@ public class CommitLog {
     // Message's MAGIC CODE daa320a7
     public final static int MESSAGE_MAGIC_CODE = -626843481;
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
+    private static final InternalLogger logger = InternalLoggerFactory.getLogger(LoggerName.BROKER_CONSOLE_NAME);
     // End of file empty MAGIC CODE cbd43194
     private final static int BLANK_MAGIC_CODE = -875286124;
     private final MappedFileQueue mappedFileQueue;
     private final DefaultMessageStore defaultMessageStore;
+    /**
+     * 刷盘线程：
+     *      同步 SYNC_FLUSH：组提交，只能使用mmap
+     *      异步 ASYNC_FLUSH：定时刷盘, 可使用mmap和TransientStorePool
+     */
     private final FlushCommitLogService flushCommitLogService;
 
     //If TransientStorePool enabled, we must flush message to FileChannel at fixed periods
+    /**
+     * ASYNC_FLUSH异步刷盘 且开启 TransientStorePool 才起作用
+     * 因为不采用mmap映射的话，需要提交线程，定时将数据写到 FileChannel
+     */
     private final FlushCommitLogService commitLogService;
 
     private final AppendMessageCallback appendMessageCallback;
@@ -69,9 +80,9 @@ public class CommitLog {
         this.defaultMessageStore = defaultMessageStore;
 
         if (FlushDiskType.SYNC_FLUSH == defaultMessageStore.getMessageStoreConfig().getFlushDiskType()) {
-            this.flushCommitLogService = new GroupCommitService();
+            this.flushCommitLogService = new GroupCommitService();//组提交 同步flush
         } else {
-            this.flushCommitLogService = new FlushRealTimeService();
+            this.flushCommitLogService = new FlushRealTimeService();// 异步flush
         }
 
         this.commitLogService = new CommitRealTimeService();
@@ -665,6 +676,7 @@ public class CommitLog {
     }
 
     public void handleHA(AppendMessageResult result, PutMessageResult putMessageResult, MessageExt messageExt) {
+        // 全局搜索 SYNC_MASTER 和 ASYNC_MASTER , 发现这两者的区别估计就在这里了？？
         if (BrokerRole.SYNC_MASTER == this.defaultMessageStore.getMessageStoreConfig().getBrokerRole()) {
             HAService service = this.defaultMessageStore.getHaService();
             if (messageExt.isWaitStoreMsgOK()) {
@@ -1046,11 +1058,17 @@ public class CommitLog {
         public void wakeupCustomer(final boolean flushOK) {
             this.flushOK = flushOK;
             this.countDownLatch.countDown();
+            logger.info("wakeupCustomer is  {} ", flushOK);
         }
 
         public boolean waitForFlush(long timeout) {
             try {
+                long start = System.currentTimeMillis();
                 this.countDownLatch.await(timeout, TimeUnit.MILLISECONDS);
+                long end = System.currentTimeMillis() - start;
+                if (end > timeout) {
+                    logger.warn("waitForFlush timeout , and time is  {} ms", end);
+                }
                 return this.flushOK;
             } catch (InterruptedException e) {
                 log.error("Interrupted", e);
@@ -1060,7 +1078,7 @@ public class CommitLog {
     }
 
     /**
-     * GroupCommit Service
+     * GroupCommit Service 组提交：定时多个请求一起提交，减少刷盘
      */
     class GroupCommitService extends FlushCommitLogService {
         private volatile List<GroupCommitRequest> requestsWrite = new ArrayList<GroupCommitRequest>();
@@ -1085,18 +1103,30 @@ public class CommitLog {
             synchronized (this.requestsRead) {
                 if (!this.requestsRead.isEmpty()) {
                     for (GroupCommitRequest req : this.requestsRead) {
+                        logger.info("|||||||||||||||||||||||||||||");
                         // There may be a message in the next file, so a maximum of
                         // two times the flush
+                        // 当 flushedWhere 在 0 文件末尾，且 0 文件已经装不下本消息，本消息就会在下一个文件，所以需要再刷一次盘，
+                        // 我觉得应该重试3次，不然这个消息就会返回客户端 刷盘超时 FLUSH_DISK_TIMEOUT
                         boolean flushOK = false;
                         for (int i = 0; i < 2 && !flushOK; i++) {
-                            flushOK = CommitLog.this.mappedFileQueue.getFlushedWhere() >= req.getNextOffset();
+                            long flushedWhere = CommitLog.this.mappedFileQueue.getFlushedWhere();
+                            long nextOffset = req.getNextOffset();
+                            flushOK = flushedWhere >= nextOffset;
+                            logger.warn(">>>>>>>>>> index: {} , flushedWhere nextOffset {} - {} = {} flushOK {}",
+                                i, flushedWhere, nextOffset, (flushedWhere - nextOffset), flushOK);
 
                             if (!flushOK) {
                                 CommitLog.this.mappedFileQueue.flush(0);
+                            //    此处再检查一次 我觉得会更好
+                            //    flushedWhere = CommitLog.this.mappedFileQueue.getFlushedWhere();
+                            //    nextOffset = req.getNextOffset();
+                            //    flushOK = flushedWhere >= nextOffset;
                             }
                         }
 
                         req.wakeupCustomer(flushOK);
+                        logger.info("***************************");
                     }
 
                     long storeTimestamp = CommitLog.this.mappedFileQueue.getStoreTimestamp();
@@ -1119,7 +1149,12 @@ public class CommitLog {
             while (!this.isStopped()) {
                 try {
                     this.waitForRunning(10);
+                    long start = System.currentTimeMillis();
                     this.doCommit();
+                    long end = System.currentTimeMillis() - start;
+                    if (end > 0) {
+                        logger.warn(" doCommit time is  {} ms", end);
+                    }
                 } catch (Exception e) {
                     CommitLog.log.warn(this.getServiceName() + " service has exception. ", e);
                 }

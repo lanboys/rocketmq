@@ -16,8 +16,6 @@
  */
 package org.apache.rocketmq.namesrv;
 
-import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.classic.joran.JoranConfigurator;
 import ch.qos.logback.core.joran.spi.JoranException;
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
@@ -39,7 +37,6 @@ import org.apache.rocketmq.remoting.netty.NettyServerConfig;
 import org.apache.rocketmq.remoting.protocol.RemotingCommand;
 import org.apache.rocketmq.srvutil.ServerUtil;
 import org.apache.rocketmq.srvutil.ShutdownHookThread;
-import org.slf4j.LoggerFactory;
 
 public class NamesrvStartup {
 
@@ -112,11 +109,11 @@ public class NamesrvStartup {
             System.exit(-2);
         }
 
-        LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
-        JoranConfigurator configurator = new JoranConfigurator();
-        configurator.setContext(lc);
-        lc.reset();
-        configurator.doConfigure(namesrvConfig.getRocketmqHome() + "/conf/logback_namesrv.xml");
+        //LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
+        //JoranConfigurator configurator = new JoranConfigurator();
+        //configurator.setContext(lc);
+        //lc.reset();
+        //configurator.doConfigure(namesrvConfig.getRocketmqHome() + "/conf/logback_namesrv.xml");
 
         log = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
 
