@@ -16,6 +16,9 @@
  */
 package org.apache.rocketmq.common.consumer;
 
+/**
+ * 在broker服务器返回-1时起作用，具体看 RebalancePushImpl#computePullFromWhere
+ */
 public enum ConsumeFromWhere {
     CONSUME_FROM_LAST_OFFSET,
 

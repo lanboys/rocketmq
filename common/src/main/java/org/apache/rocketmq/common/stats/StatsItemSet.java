@@ -17,13 +17,14 @@
 
 package org.apache.rocketmq.common.stats;
 
+import org.apache.rocketmq.common.UtilAll;
+
 import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import org.apache.rocketmq.common.UtilAll;
 import org.apache.rocketmq.logging.InternalLogger;
 
 public class StatsItemSet {
@@ -47,7 +48,7 @@ public class StatsItemSet {
             @Override
             public void run() {
                 try {
-                    samplingInSeconds();
+                    //samplingInSeconds();
                 } catch (Throwable ignored) {
                 }
             }
@@ -57,7 +58,7 @@ public class StatsItemSet {
             @Override
             public void run() {
                 try {
-                    samplingInMinutes();
+                    //samplingInMinutes();
                 } catch (Throwable ignored) {
                 }
             }
@@ -77,7 +78,7 @@ public class StatsItemSet {
             @Override
             public void run() {
                 try {
-                    printAtMinutes();
+                    //printAtMinutes();
                 } catch (Throwable ignored) {
                 }
             }

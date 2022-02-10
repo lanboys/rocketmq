@@ -29,23 +29,41 @@ import java.util.List;
 public class PushConsumer {
 
     public static void main(String[] args) throws InterruptedException, MQClientException {
-        DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("a-group");
+        final DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("a-group");
+        consumer.setNamesrvAddr("localhost:9876");
         consumer.subscribe("aaaaa", "*");
         consumer.setConsumeFromWhere(ConsumeFromWhere.CONSUME_FROM_FIRST_OFFSET);
         //wrong time format 2017_0422_221800
         //consumer.setConsumeTimestamp("20170422221800");
+        consumer.setPullBatchSize(5);
+        consumer.setConsumeMessageBatchMaxSize(5);
+        //consumer.setPullInterval(20000);
         consumer.registerMessageListener(new MessageListenerConcurrently() {
 
             @Override
             public ConsumeConcurrentlyStatus consumeMessage(List<MessageExt> msgs, ConsumeConcurrentlyContext context) {
                 //System.out.printf("%s Receive New Messages: %s %n", Thread.currentThread().getName(), msgs);
-                // 收到消息
-                System.out.println(Thread.currentThread().getName() + " consumeMessage(): 收到 " + msgs.size() + " 条消息");
-                for (MessageExt msg : msgs) {
-                    byte[] body = msg.getBody();
-                    System.out.println("consumeMessage(): " + new String(body) + " msgId: " + msg.getMsgId()
-                        + " queueId: " + msg.getQueueId() + " queueOffset: " + msg.getQueueOffset());
+
+                System.out.println(Thread.currentThread().getName() + " 收到 " + msgs.size() + " 条消息");
+                context.setAckIndex(-1);//设置消费成功的索引
+                for (int i = 0; i < msgs.size(); i++) {
+                    try {
+                        MessageExt msg = msgs.get(i);
+                        byte[] body = msg.getBody();
+                        //if (i == 4) {
+                        //    System.out.println(Thread.currentThread().getName() + " 消费失败：" + new String(body) + " " + msg.getKeys()
+                        //        + " queueId: " + msg.getQueueId() + " queueOffset: " + msg.getQueueOffset() + " reconsumeTimes: " + msg.getReconsumeTimes() + " topic: " + msg.getTopic());
+                        //    throw new RuntimeException("模拟消息消费失败");
+                        //}
+                        System.out.println(Thread.currentThread().getName() + " 消费成功：" + new String(body) + " " + msg.getKeys()
+                            + " queueId: " + msg.getQueueId() + " queueOffset: " + msg.getQueueOffset() + " reconsumeTimes: " + msg.getReconsumeTimes() + " topic: " + msg.getTopic());
+                        context.setAckIndex(i);//设置消费成功的索引
+                    } catch (Exception e) {
+                        return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
+                    }
                 }
+
+                //return ConsumeConcurrentlyStatus.RECONSUME_LATER;
                 return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
             }
         });

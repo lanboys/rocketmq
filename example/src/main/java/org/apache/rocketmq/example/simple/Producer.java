@@ -22,28 +22,39 @@ import org.apache.rocketmq.client.producer.SendResult;
 import org.apache.rocketmq.common.message.Message;
 import org.apache.rocketmq.remoting.common.RemotingHelper;
 
+import java.util.UUID;
+
 public class Producer {
-    public static void main(String[] args) throws MQClientException, InterruptedException {
 
-        DefaultMQProducer producer = new DefaultMQProducer("ProducerGroupName");
+  public static void main(String[] args) throws MQClientException {
 
-        producer.start();
+    DefaultMQProducer producer = new DefaultMQProducer("ProducerGroupName");
+    // 更新路由信息定时任务时间间隔
+    producer.setPollNameServerInterval(1000 * 18000);
+    // 故障延迟机制
+    producer.setSendLatencyFaultEnable(true);
 
-        for (int i = 0; i < 128; i++)
-            try {
-                {
-                    Message msg = new Message("TopicTest",
-                        "TagA",
-                        "OrderID188",
-                        "Hello world".getBytes(RemotingHelper.DEFAULT_CHARSET));
-                    SendResult sendResult = producer.send(msg);
-                    System.out.printf("%s%n", sendResult);
-                }
+    producer.setNamesrvAddr("localhost:9876");
+    producer.start();
 
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+    long l = System.currentTimeMillis();
+    for (int i = 0; i < 10000; i++)
+      try {
+        StringBuilder builder = new StringBuilder();
+        //for (int j = 6; j < 300; j++) {
+        //for (int j = 6; j < 1024; j++) {
+        //builder.append("8");
+        //}
+        builder.append("我是消息-").append(i).append("*******").append(UUID.randomUUID().toString());
+        byte[] bytes = builder.toString().getBytes(RemotingHelper.DEFAULT_CHARSET);
+        Message msg = new Message("aaaaa", "Tag-index-" + i, "key-" + l + "-" + i, bytes);
 
-        producer.shutdown();
-    }
+        SendResult sendResult = producer.send(msg);
+        System.out.printf("%s%n", sendResult);
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+
+    producer.shutdown();
+  }
 }
