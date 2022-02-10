@@ -25,11 +25,11 @@ package org.apache.rocketmq.common.protocol.heartbeat;
  */
 public enum MessageModel {
     /**
-     * broadcast
+     * broadcast  对于同一个消费组内的所有消费者都消费一次，消息被消费多次
      */
     BROADCASTING("BROADCASTING"),
     /**
-     * clustering
+     * clustering  对于同一个消费组内的消费者，只有一个消费者消费一次
      */
     CLUSTERING("CLUSTERING");
 

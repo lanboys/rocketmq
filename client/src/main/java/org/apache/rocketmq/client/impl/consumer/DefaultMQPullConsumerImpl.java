@@ -16,13 +16,6 @@
  */
 package org.apache.rocketmq.client.impl.consumer;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.concurrent.ConcurrentMap;
 import org.apache.rocketmq.client.QueryResult;
 import org.apache.rocketmq.client.Validators;
 import org.apache.rocketmq.client.consumer.DefaultMQPullConsumer;
@@ -62,6 +55,14 @@ import org.apache.rocketmq.remoting.RPCHook;
 import org.apache.rocketmq.remoting.common.RemotingHelper;
 import org.apache.rocketmq.remoting.exception.RemotingException;
 import org.slf4j.Logger;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.ConcurrentMap;
 
 public class DefaultMQPullConsumerImpl implements MQConsumerInner {
     private final Logger log = ClientLogger.getLog();
@@ -201,8 +202,8 @@ public class DefaultMQPullConsumerImpl implements MQConsumerInner {
             maxNums,
             sysFlag,
             0,
-            this.defaultMQPullConsumer.getBrokerSuspendMaxTimeMillis(),
-            timeoutMillis,
+            this.defaultMQPullConsumer.getBrokerSuspendMaxTimeMillis(),//Long polling mode 挂起时间，默认20s, 这个时间会传给broker
+            timeoutMillis,//Long polling mode 下的，超时时间要比挂起时间长，默认30s
             CommunicationMode.SYNC,
             null
         );

@@ -19,29 +19,44 @@ package org.apache.rocketmq.example.simple;
 import org.apache.rocketmq.client.consumer.DefaultMQPullConsumer;
 import org.apache.rocketmq.client.consumer.PullResult;
 import org.apache.rocketmq.client.exception.MQClientException;
+import org.apache.rocketmq.common.message.MessageExt;
 import org.apache.rocketmq.common.message.MessageQueue;
 
+import java.util.List;
+
 public class PullConsumerTest {
-    public static void main(String[] args) throws MQClientException {
-        DefaultMQPullConsumer consumer = new DefaultMQPullConsumer("please_rename_unique_group_name_5");
-        consumer.start();
 
-        try {
-            MessageQueue mq = new MessageQueue();
-            mq.setQueueId(0);
-            mq.setTopic("TopicTest3");
-            mq.setBrokerName("vivedeMacBook-Pro.local");
+  public static void main(String[] args) throws MQClientException, InterruptedException {
+    DefaultMQPullConsumer consumer = new DefaultMQPullConsumer("a-group");
+    consumer.setNamesrvAddr("localhost:9876");
+    consumer.start();
 
-            long offset = 26;
+    MessageQueue mq = new MessageQueue();
+    mq.setQueueId(0);
+    mq.setTopic("aaaaa");
+    mq.setBrokerName("broker-1");
 
-            long beginTime = System.currentTimeMillis();
-            PullResult pullResult = consumer.pullBlockIfNotFound(mq, null, offset, 32);
-            System.out.printf("%s%n", System.currentTimeMillis() - beginTime);
-            System.out.printf("%s%n", pullResult);
-        } catch (Exception e) {
-            e.printStackTrace();
+    long offset = 3;
+    while (true) {
+      try {
+        long beginTime = System.currentTimeMillis();
+        PullResult pullResult = consumer.pullBlockIfNotFound(mq, null, offset, 3);
+        System.out.printf("%s%n", System.currentTimeMillis() - beginTime);
+        System.out.printf("%s%n", pullResult);
+        //offset = pullResult.getNextBeginOffset();
+        // 自己更新offset
+        consumer.updateConsumeOffset(mq, offset);
+        List<MessageExt> msgFoundList = pullResult.getMsgFoundList();
+        for (MessageExt msg : msgFoundList) {
+          byte[] body = msg.getBody();
+          System.out.println("consumeMessage(): " + new String(body) + " msgId: " + msg.getMsgId()
+              + " queueId: " + msg.getQueueId() + " queueOffset: " + msg.getQueueOffset());
         }
-
-        consumer.shutdown();
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+      Thread.sleep(1 * 30 * 1000);
     }
+    //consumer.shutdown();
+  }
 }

@@ -16,6 +16,14 @@
  */
 package org.apache.rocketmq.client.impl.consumer;
 
+import org.apache.rocketmq.client.consumer.DefaultMQPushConsumer;
+import org.apache.rocketmq.client.log.ClientLogger;
+import org.apache.rocketmq.common.message.MessageAccessor;
+import org.apache.rocketmq.common.message.MessageConst;
+import org.apache.rocketmq.common.message.MessageExt;
+import org.apache.rocketmq.common.protocol.body.ProcessQueueInfo;
+import org.slf4j.Logger;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -26,13 +34,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import org.apache.rocketmq.client.consumer.DefaultMQPushConsumer;
-import org.apache.rocketmq.client.log.ClientLogger;
-import org.apache.rocketmq.common.message.MessageAccessor;
-import org.apache.rocketmq.common.message.MessageConst;
-import org.apache.rocketmq.common.message.MessageExt;
-import org.apache.rocketmq.common.protocol.body.ProcessQueueInfo;
-import org.slf4j.Logger;
 
 /**
  * Queue consumption snapshot
@@ -141,6 +142,8 @@ public class ProcessQueue {
 
                 if (!msgTreeMap.isEmpty() && !this.consuming) {
                     dispatchToConsume = true;
+                    // 状态：消费中，当所有消息消费完了才会恢复 未消费中，会影响dispatchToConsume结果，
+                    // 如果处于消费中状态，将不会创建消费请求(这里是针对顺序消费，不影响并发消费)
                     this.consuming = true;
                 }
 
@@ -200,7 +203,7 @@ public class ProcessQueue {
                     }
                     msgCount.addAndGet(removedCnt);
 
-                    if (!msgTreeMap.isEmpty()) {
+                    if (!msgTreeMap.isEmpty()) {// 还有没消费完的消息，就选第一个为offset
                         result = msgTreeMap.firstKey();
                     }
                 }

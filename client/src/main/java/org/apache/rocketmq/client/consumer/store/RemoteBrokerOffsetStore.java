@@ -16,13 +16,6 @@
  */
 package org.apache.rocketmq.client.consumer.store;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.rocketmq.client.exception.MQBrokerException;
 import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.client.impl.FindBrokerResult;
@@ -35,6 +28,14 @@ import org.apache.rocketmq.common.protocol.header.QueryConsumerOffsetRequestHead
 import org.apache.rocketmq.common.protocol.header.UpdateConsumerOffsetRequestHeader;
 import org.apache.rocketmq.remoting.exception.RemotingException;
 import org.slf4j.Logger;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Remote storage implementation
@@ -70,6 +71,8 @@ public class RemoteBrokerOffsetStore implements OffsetStore {
                     offsetOld.set(offset);
                 }
             }
+            //log.info("updateOffset messageQueue offset. group={}, mq={}, offsetTableSize={}", this.groupName, mq,
+            //    offsetTable.size());
         }
     }
 
@@ -90,6 +93,7 @@ public class RemoteBrokerOffsetStore implements OffsetStore {
                     try {
                         long brokerOffset = this.fetchConsumeOffsetFromBroker(mq);
                         AtomicLong offset = new AtomicLong(brokerOffset);
+                        // 更新内存中的消费进度
                         this.updateOffset(mq, offset.get(), false);
                         return brokerOffset;
                     }
@@ -125,11 +129,11 @@ public class RemoteBrokerOffsetStore implements OffsetStore {
                     if (mqs.contains(mq)) {
                         try {
                             this.updateConsumeOffsetToBroker(mq, offset.get());
-                            log.info("[persistAll] Group: {} ClientId: {} updateConsumeOffsetToBroker {} {}",
-                                this.groupName,
-                                this.mQClientFactory.getClientId(),
-                                mq,
-                                offset.get());
+                            //log.info("[persistAll] Group: {} ClientId: {} updateConsumeOffsetToBroker {} {}",
+                            //    this.groupName,
+                            //    this.mQClientFactory.getClientId(),
+                            //    mq,
+                            //    offset.get());
                         } catch (Exception e) {
                             log.error("updateConsumeOffsetToBroker exception, " + mq.toString(), e);
                         }

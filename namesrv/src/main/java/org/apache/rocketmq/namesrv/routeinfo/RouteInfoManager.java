@@ -51,6 +51,17 @@ public class RouteInfoManager {
     private static final Logger log = LoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
     private final static long BROKER_CHANNEL_EXPIRED_TIME = 1000 * 60 * 50;// broker过期时间
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
+    /**
+     1.一个QueueData对应一个master broker中队列的相关数据，比如有多少个队列
+     2.一个BrokerData描述多个同名的broker, 至少一个master, 0个或多个slave
+     3.master brokerName 要唯一，无论clusterName是否相同都需要唯一，否则brokerAddrTable中的在前面注册
+       的broker address会被替换
+     4.topic与broker之间的关系是松散的，创建的时候key ( createTopic() 方法参数) 的作用是为了获取broker address,
+      然后在对应的broker上创建，可以在多个broker上面创建（不同集群也可以，比如控制台页面上就可以随意创建）
+     5.Broker master与Slave配对是通过指定相同的BrokerName参数来配对
+     6.Master的BrokerId必须是0，Slave的BrokerId必须是大于0的数
+     7.一个Master下面可以挂载多个Slave，同一Master下的多个Slave通过指定不同的BrokerId来区分
+     */
     private final HashMap<String/* topic */, List<QueueData>> topicQueueTable;
     private final HashMap<String/* brokerName */, BrokerData> brokerAddrTable;
     private final HashMap<String/* clusterName */, Set<String/* brokerName */>> clusterAddrTable;
