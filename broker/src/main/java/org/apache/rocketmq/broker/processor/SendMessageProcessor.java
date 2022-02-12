@@ -16,7 +16,6 @@
  */
 package org.apache.rocketmq.broker.processor;
 
-import io.netty.channel.ChannelHandlerContext;
 import org.apache.rocketmq.broker.BrokerController;
 import org.apache.rocketmq.broker.mqtrace.ConsumeMessageContext;
 import org.apache.rocketmq.broker.mqtrace.ConsumeMessageHook;
@@ -52,6 +51,8 @@ import org.apache.rocketmq.store.stats.BrokerStatsManager;
 import java.net.SocketAddress;
 import java.util.List;
 import java.util.Map;
+
+import io.netty.channel.ChannelHandlerContext;
 
 public class SendMessageProcessor extends AbstractSendMessageProcessor implements NettyRequestProcessor {
 
@@ -356,6 +357,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
                         + "] sending transaction message is forbidden");
                 return response;
             }
+            // 事务消息
             putMessageResult = this.brokerController.getTransactionalMessageService().prepareMessage(msgInner);
         } else {
             putMessageResult = this.brokerController.getMessageStore().putMessage(msgInner);

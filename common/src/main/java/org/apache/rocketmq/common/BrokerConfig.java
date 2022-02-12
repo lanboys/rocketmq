@@ -16,14 +16,15 @@
  */
 package org.apache.rocketmq.common;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import org.apache.rocketmq.common.annotation.ImportantField;
 import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.common.constant.PermName;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.remoting.common.RemotingUtil;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 public class BrokerConfig {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.COMMON_LOGGER_NAME);
@@ -155,6 +156,8 @@ public class BrokerConfig {
     /**
      * The minimum time of the transactional message  to be checked firstly, one message only exceed this time interval
      * that can be checked.
+     *
+     * 首先检查的事务消息的最短时间，一条消息只超过此时间间隔可以检查。
      */
     @ImportantField
     private long transactionTimeOut = 6 * 1000;
@@ -169,7 +172,7 @@ public class BrokerConfig {
      * Transaction message check interval.
      */
     @ImportantField
-    private long transactionCheckInterval = 60 * 1000;
+    private long transactionCheckInterval = 1 * 60 * 1000;
 
     public boolean isTraceOn() {
         return traceOn;

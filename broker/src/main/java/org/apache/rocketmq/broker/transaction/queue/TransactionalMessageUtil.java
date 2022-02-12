@@ -25,6 +25,7 @@ public class TransactionalMessageUtil {
     public static Charset charset = Charset.forName("utf-8");
 
     public static String buildOpTopic() {
+        // 这个主题队列记录了 RMQ_SYS_TRANS_HALF_TOPIC 队列中已经处理过的消息
         return MixAll.RMQ_SYS_TRANS_OP_HALF_TOPIC;
     }
 

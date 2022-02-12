@@ -190,6 +190,9 @@ public class TransactionalMessageBridge {
         return store.putMessage(parseHalfMessageInner(messageInner));
     }
 
+    /**
+     * 包装成半消息存储到 RMQ_SYS_TRANS_HALF_TOPIC 主题队列下
+     */
     private MessageExtBrokerInner parseHalfMessageInner(MessageExtBrokerInner msgInner) {
         MessageAccessor.putProperty(msgInner, MessageConst.PROPERTY_REAL_TOPIC, msgInner.getTopic());
         MessageAccessor.putProperty(msgInner, MessageConst.PROPERTY_REAL_QUEUE_ID,

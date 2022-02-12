@@ -16,7 +16,6 @@
  */
 package org.apache.rocketmq.broker.processor;
 
-import io.netty.channel.ChannelHandlerContext;
 import org.apache.rocketmq.broker.BrokerController;
 import org.apache.rocketmq.broker.transaction.OperationResult;
 import org.apache.rocketmq.common.TopicFilterType;
@@ -37,6 +36,8 @@ import org.apache.rocketmq.remoting.protocol.RemotingCommand;
 import org.apache.rocketmq.store.MessageExtBrokerInner;
 import org.apache.rocketmq.store.PutMessageResult;
 import org.apache.rocketmq.store.config.BrokerRole;
+
+import io.netty.channel.ChannelHandlerContext;
 
 /**
  * EndTransaction processor: process commit and rollback message
@@ -70,6 +71,7 @@ public class EndTransactionProcessor implements NettyRequestProcessor {
                         RemotingHelper.parseChannelRemoteAddr(ctx.channel()),
                         requestHeader.toString(),
                         request.getRemark());
+                    // 不知道生产者本地的事务结果，不做处理直接返回
                     return null;
                 }
 
@@ -127,13 +129,16 @@ public class EndTransactionProcessor implements NettyRequestProcessor {
             if (result.getResponseCode() == ResponseCode.SUCCESS) {
                 RemotingCommand res = checkPrepareMessage(result.getPrepareMessage(), requestHeader);
                 if (res.getCode() == ResponseCode.SUCCESS) {
+                    // 还原真实的消息
                     MessageExtBrokerInner msgInner = endMessageTransaction(result.getPrepareMessage());
                     msgInner.setSysFlag(MessageSysFlag.resetTransactionValue(msgInner.getSysFlag(), requestHeader.getCommitOrRollback()));
                     msgInner.setQueueOffset(requestHeader.getTranStateTableOffset());
                     msgInner.setPreparedTransactionOffset(requestHeader.getCommitLogOffset());
                     msgInner.setStoreTimestamp(result.getPrepareMessage().getStoreTimestamp());
+                    // 保存消息到真正的主题队列中去
                     RemotingCommand sendResult = sendFinalMessage(msgInner);
                     if (sendResult.getCode() == ResponseCode.SUCCESS) {
+                        // 删除 half 消息，实际上是存储到 RMQ_SYS_TRANS_OP_HALF_TOPIC 主题队列中去
                         this.brokerController.getTransactionalMessageService().deletePrepareMessage(result.getPrepareMessage());
                     }
                     return sendResult;
@@ -145,6 +150,7 @@ public class EndTransactionProcessor implements NettyRequestProcessor {
             if (result.getResponseCode() == ResponseCode.SUCCESS) {
                 RemotingCommand res = checkPrepareMessage(result.getPrepareMessage(), requestHeader);
                 if (res.getCode() == ResponseCode.SUCCESS) {
+                    // 删除 half 消息，实际上是存储到 RMQ_SYS_TRANS_OP_HALF_TOPIC 主题队列中去
                     this.brokerController.getTransactionalMessageService().deletePrepareMessage(result.getPrepareMessage());
                 }
                 return res;

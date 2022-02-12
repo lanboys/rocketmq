@@ -284,6 +284,7 @@
     <logger name="RocketmqTransaction" additivity="false">
         <level value="INFO"/>
         <appender-ref ref="RocketmqTransactionAppender"/>
+        <appender-ref ref="STDOUT"/>
     </logger>
 
     <logger name="RocketmqRebalanceLock" additivity="false">

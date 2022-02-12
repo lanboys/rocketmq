@@ -16,9 +16,10 @@
  */
 package org.apache.rocketmq.store.config;
 
-import java.io.File;
 import org.apache.rocketmq.common.annotation.ImportantField;
 import org.apache.rocketmq.store.ConsumeQueue;
+
+import java.io.File;
 
 public class MessageStoreConfig {
     //The root directory in which the log data is kept
@@ -76,6 +77,7 @@ public class MessageStoreConfig {
     private String deleteWhen = "04";
     private int diskMaxUsedSpaceRatio = 75;
     // The number of hours to keep a log file before deleting it (in hours)
+    // 文件保留时间
     @ImportantField
     private int fileReservedTime = 72;
     // Flow control for ConsumeQueue

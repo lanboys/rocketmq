@@ -141,6 +141,7 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
                 }
 
                 List<Long> doneOpOffset = new ArrayList<>();
+                // 获取已经处理的消息，它们存储在RMQ_SYS_TRANS_OP_HALF_TOPIC主题队列中
                 HashMap<Long, Long> removeMap = new HashMap<>();
                 PullResult pullResult = fillOpRemoveMap(removeMap, opQueue, opOffset, halfOffset, doneOpOffset);
                 if (null == pullResult) {
@@ -179,7 +180,7 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
                                 continue;
                             }
                         }
-
+                        // 丢弃检查超限的消息
                         if (needDiscard(msgExt, transactionCheckMax) || needSkip(msgExt)) {
                             listener.resolveDiscardMsg(msgExt);
                             newOffset = i + 1;
@@ -212,14 +213,28 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
                             }
                         }
                         List<MessageExt> opMsg = pullResult.getMsgFoundList();
-                        boolean isNeedCheck = (opMsg == null && valueOfCurrentMinusBorn > checkImmunityTime)
-                            || (opMsg != null && (opMsg.get(opMsg.size() - 1).getBornTimestamp() - startTime > transactionTimeout))
-                            || (valueOfCurrentMinusBorn <= -1);
+                        //boolean isNeedCheck = (opMsg == null && valueOfCurrentMinusBorn > checkImmunityTime)
+                        //    || (opMsg != null && (opMsg.get(opMsg.size() - 1).getBornTimestamp() - startTime > transactionTimeout))
+                        //    || (valueOfCurrentMinusBorn <= -1);
 
-                        if (isNeedCheck) {
+                        boolean isNeedCheck1 = false, isNeedCheck2 = false, isNeedCheck3 = valueOfCurrentMinusBorn <= -1;
+                        if (opMsg == null) {
+                            isNeedCheck1 = valueOfCurrentMinusBorn > checkImmunityTime;
+                        } else {
+                            long l = opMsg.get(opMsg.size() - 1).getBornTimestamp() - startTime;
+                            isNeedCheck2 = l > transactionTimeout;// 没搞明白
+                            if (isNeedCheck2) {
+                                System.out.println("opMsg.get(opMsg.size() - 1).getBornTimestamp() - startTime = " + l);
+                            }
+                        }
+
+                        if (isNeedCheck1 || isNeedCheck2 || isNeedCheck3) {
+                            // 把消息重新放回去，更改了检查次数
                             if (!putBackHalfMsgQueue(msgExt, i)) {
+                                // 会再试一次
                                 continue;
                             }
+                            // 发消息给生产者检查本地事务状态
                             listener.resolveHalfMsg(msgExt);
                         } else {
                             pullResult = fillOpRemoveMap(removeMap, opQueue, pullResult.getNextBeginOffset(), halfOffset, doneOpOffset);
@@ -230,8 +245,9 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
                     }
                     newOffset = i + 1;
                     i++;
-                }
+                }// end while
                 if (newOffset != halfOffset) {
+                    // 更新消费进度
                     transactionalMessageBridge.updateConsumeOffset(messageQueue, newOffset);
                 }
                 long newOpOffset = calculateOpOffset(doneOpOffset, opOffset);
@@ -270,7 +286,7 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
      */
     private PullResult fillOpRemoveMap(HashMap<Long, Long> removeMap,
         MessageQueue opQueue, long pullOffsetOfOp, long miniOffset, List<Long> doneOpOffset) {
-        PullResult pullResult = pullOpMsg(opQueue, pullOffsetOfOp, 32);
+        PullResult pullResult = pullOpMsg(opQueue, pullOffsetOfOp, 32);// 一次最多拉取32个操作队列消息
         if (null == pullResult) {
             return null;
         }
