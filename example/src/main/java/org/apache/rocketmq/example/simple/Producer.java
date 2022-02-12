@@ -38,7 +38,7 @@ public class Producer {
     producer.start();
 
     long l = System.currentTimeMillis();
-    for (int i = 0; i < 10000; i++)
+    for (int i = 0; i < 1; i++)
       try {
         StringBuilder builder = new StringBuilder();
         //for (int j = 6; j < 300; j++) {
