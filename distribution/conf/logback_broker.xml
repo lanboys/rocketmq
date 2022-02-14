@@ -288,11 +288,13 @@
     <logger name="RocketmqStore" additivity="false">
         <level value="INFO"/>
         <appender-ref ref="RocketmqStoreAppender"/>
+        <appender-ref ref="STDOUT"/>
     </logger>
 
     <logger name="RocketmqStoreError" additivity="false">
         <level value="INFO"/>
         <appender-ref ref="RocketmqStoreErrorAppender"/>
+        <appender-ref ref="STDOUT"/>
     </logger>
 
     <logger name="RocketmqTransaction" additivity="false">

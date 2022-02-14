@@ -16,17 +16,18 @@
  */
 package org.apache.rocketmq.store.ha;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.SocketChannel;
 import org.apache.rocketmq.common.ServiceThread;
 import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.remoting.common.RemotingUtil;
 import org.apache.rocketmq.store.SelectMappedBufferResult;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.SocketChannel;
 
 public class HAConnection {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
@@ -36,7 +37,7 @@ public class HAConnection {
     private WriteSocketService writeSocketService;
     private ReadSocketService readSocketService;
 
-    private volatile long slaveRequestOffset = -1;
+    private volatile long slaveRequestOffset = -1;// 第一次传过来的offset
     private volatile long slaveAckOffset = -1;
 
     public HAConnection(final HAService haService, final SocketChannel socketChannel) throws IOException {
@@ -166,8 +167,9 @@ public class HAConnection {
 
                             HAConnection.this.slaveAckOffset = readOffset;
                             if (HAConnection.this.slaveRequestOffset < 0) {
-                                HAConnection.this.slaveRequestOffset = readOffset;
-                                log.info("slave[" + HAConnection.this.clientAddr + "] request offset " + readOffset);
+                                HAConnection.this.slaveRequestOffset = readOffset;// 第一次传过来的offset
+                                //log.info("slave[" + HAConnection.this.clientAddr + "] request offset " + readOffset);
+                                log.info("slave服务器[" + HAConnection.this.clientAddr + "]第一次传过来的offset: " + readOffset);
                             }
 
                             HAConnection.this.haService.notifyTransferSome(HAConnection.this.slaveAckOffset);
@@ -216,7 +218,7 @@ public class HAConnection {
                 try {
                     this.selector.select(1000);
 
-                    if (-1 == HAConnection.this.slaveRequestOffset) {
+                    if (-1 == HAConnection.this.slaveRequestOffset) {// 等待
                         Thread.sleep(10);
                         continue;
                     }

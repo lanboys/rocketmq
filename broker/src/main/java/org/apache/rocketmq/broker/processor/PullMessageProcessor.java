@@ -34,8 +34,6 @@ import org.apache.rocketmq.common.constant.PermName;
 import org.apache.rocketmq.common.filter.ExpressionType;
 import org.apache.rocketmq.common.filter.FilterAPI;
 import org.apache.rocketmq.common.help.FAQUrl;
-import org.apache.rocketmq.logging.InternalLogger;
-import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.common.message.MessageDecoder;
 import org.apache.rocketmq.common.message.MessageQueue;
 import org.apache.rocketmq.common.protocol.ResponseCode;
@@ -46,6 +44,8 @@ import org.apache.rocketmq.common.protocol.heartbeat.SubscriptionData;
 import org.apache.rocketmq.common.protocol.topic.OffsetMovedEvent;
 import org.apache.rocketmq.common.subscription.SubscriptionGroupConfig;
 import org.apache.rocketmq.common.sysflag.PullSysFlag;
+import org.apache.rocketmq.logging.InternalLogger;
+import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.remoting.common.RemotingHelper;
 import org.apache.rocketmq.remoting.common.RemotingUtil;
 import org.apache.rocketmq.remoting.exception.RemotingCommandException;
@@ -261,6 +261,15 @@ public class PullMessageProcessor implements NettyRequestProcessor {
                     }
                     break;
             }
+            // 只有当前机器出现某些情况( DefaultMessageStore.getMessage )，才会给消费者推荐最优的broker节点,
+            // 这个节点是人工配置或者默认的 whichBrokerWhenConsumeSlowly = 1 ,
+            // 但是实际上消费者如果找不到推荐的broker节点, 会自动更换为broker表的第一个broker,
+            // 逻辑在方法 MQClientInstance.findBrokerAddressInSubscribe 中
+
+            // 如果为master, 消费缓慢的时候则会使用推荐的slave(控制面板可配置)
+            // 如果为slave, 也会启用推荐
+            // 比如 1 master 1 slave(配置一样)，master繁忙，会推荐到slave(控制面板上默认配置brokerId = 1)，slave此时其实也会检测到繁忙，
+            // 也会推荐，不过推荐的是自己，直到系统不再繁忙，又会推荐回master
 
             if (this.brokerController.getBrokerConfig().isSlaveReadEnable()) {
                 // consume too slow ,redirect to another machine
@@ -274,6 +283,7 @@ public class PullMessageProcessor implements NettyRequestProcessor {
             } else {
                 responseHeader.setSuggestWhichBrokerId(MixAll.MASTER_ID);
             }
+            log.info("最终建议的brokerId: {}, slaveReadEnable: {} ", responseHeader.getSuggestWhichBrokerId(), this.brokerController.getBrokerConfig().isSlaveReadEnable());
 
             switch (getMessageResult.getStatus()) {
                 case FOUND:

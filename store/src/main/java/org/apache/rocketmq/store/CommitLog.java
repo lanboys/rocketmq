@@ -19,14 +19,14 @@ package org.apache.rocketmq.store;
 import org.apache.rocketmq.common.ServiceThread;
 import org.apache.rocketmq.common.UtilAll;
 import org.apache.rocketmq.common.constant.LoggerName;
-import org.apache.rocketmq.logging.InternalLogger;
-import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.common.message.MessageAccessor;
 import org.apache.rocketmq.common.message.MessageConst;
 import org.apache.rocketmq.common.message.MessageDecoder;
 import org.apache.rocketmq.common.message.MessageExt;
 import org.apache.rocketmq.common.message.MessageExtBatch;
 import org.apache.rocketmq.common.sysflag.MessageSysFlag;
+import org.apache.rocketmq.logging.InternalLogger;
+import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.store.config.BrokerRole;
 import org.apache.rocketmq.store.config.FlushDiskType;
 import org.apache.rocketmq.store.ha.HAService;
@@ -54,7 +54,7 @@ public class CommitLog {
     private final DefaultMessageStore defaultMessageStore;
     /**
      * 刷盘线程：
-     *      同步 SYNC_FLUSH：组提交，只能使用mmap
+     *      同步 SYNC_FLUSH：组提交, 只能使用mmap
      *      异步 ASYNC_FLUSH：定时刷盘, 可使用mmap和TransientStorePool
      */
     private final FlushCommitLogService flushCommitLogService;
@@ -84,7 +84,10 @@ public class CommitLog {
         } else {
             this.flushCommitLogService = new FlushRealTimeService();// 异步flush
         }
-
+        /**
+         * ASYNC_FLUSH异步刷盘 且开启 TransientStorePool 才起作用
+         * 因为不采用mmap映射的话，需要提交线程，定时将数据写到 FileChannel
+         */
         this.commitLogService = new CommitRealTimeService();
 
         this.appendMessageCallback = new DefaultAppendMessageCallback(defaultMessageStore.getMessageStoreConfig().getMaxMessageSize());
@@ -685,8 +688,8 @@ public class CommitLog {
                     GroupCommitRequest request = new GroupCommitRequest(result.getWroteOffset() + result.getWroteBytes());
                     service.putRequest(request);
                     service.getWaitNotifyObject().wakeupAll();
-                    boolean flushOK =
-                        request.waitForFlush(this.defaultMessageStore.getMessageStoreConfig().getSyncFlushTimeout());
+                    // 这里其实只是 检查slave服务器是否完成数据同步，不是向从服务器推送数据
+                    boolean flushOK = request.waitForFlush(this.defaultMessageStore.getMessageStoreConfig().getSyncFlushTimeout());
                     if (!flushOK) {
                         log.error("do sync transfer other node, wait return, but failed, topic: " + messageExt.getTopic() + " tags: "
                             + messageExt.getTags() + " client address: " + messageExt.getBornHostNameString());
@@ -907,7 +910,7 @@ public class CommitLog {
     abstract class FlushCommitLogService extends ServiceThread {
         protected static final int RETRY_TIMES_OVER = 10;
     }
-
+    //定时从缓存中把数据提交到文件FileChannel
     class CommitRealTimeService extends FlushCommitLogService {
 
         private long lastCommitTimestamp = 0;
@@ -1058,7 +1061,7 @@ public class CommitLog {
         public void wakeupCustomer(final boolean flushOK) {
             this.flushOK = flushOK;
             this.countDownLatch.countDown();
-            logger.info("wakeupCustomer is  {} ", flushOK);
+            //logger.info("wakeupCustomer is  {} ", flushOK);
         }
 
         public boolean waitForFlush(long timeout) {
@@ -1067,7 +1070,7 @@ public class CommitLog {
                 this.countDownLatch.await(timeout, TimeUnit.MILLISECONDS);
                 long end = System.currentTimeMillis() - start;
                 if (end > timeout) {
-                    logger.warn("waitForFlush timeout , and time is  {} ms", end);
+                    logger.warn("组提交等待刷盘超时[{}]，耗时: {} ms", timeout, end);
                 }
                 return this.flushOK;
             } catch (InterruptedException e) {
@@ -1103,21 +1106,29 @@ public class CommitLog {
             synchronized (this.requestsRead) {
                 if (!this.requestsRead.isEmpty()) {
                     for (GroupCommitRequest req : this.requestsRead) {
-                        logger.info("|||||||||||||||||||||||||||||");
+                        logger.info("******** 组提交请求开始 ******** ");
                         // There may be a message in the next file, so a maximum of
                         // two times the flush
-                        // 当 flushedWhere 在 0 文件末尾，且 0 文件已经装不下本消息，本消息就会在下一个文件，所以需要再刷一次盘，
-                        // 我觉得应该重试3次，不然这个消息就会返回客户端 刷盘超时 FLUSH_DISK_TIMEOUT
+                        // 当 flushedWhere 在 000000 文件末尾，且 000000 文件已经装不下本消息，本消息就会在下一个文件，所以需要再刷一次盘，
+                        // 我觉得应该重试3次(或者在刷盘后立马再检查一次)，不然这个消息就会返回客户端 刷盘超时 FLUSH_DISK_TIMEOUT,
+                        // 不过commit文件那么大, 处于临界的消息是非常少的, 无伤大雅
+                        /**
+                         *  ******** 组提交请求开始 ********
+                         *  组提交重试次数:0, 已刷盘位置:976, 等待刷盘位置:1268, 结果: 刷盘失败
+                         *  全局刷盘位置: 前: 976, 后: 1024, 当前文件刷盘位置: 1024, 文件: E:\rocketmq\data\cluster-1\broker-1\m\store\commitlog\00000000000000000000
+                         *  组提交重试次数:1, 已刷盘位置:1024, 等待刷盘位置:1268, 结果: 刷盘失败
+                         *  全局刷盘位置: 前: 1024, 后: 1268, 当前文件刷盘位置: 244, 文件: E:\rocketmq\data\cluster-1\broker-1\m\store\commitlog\00000000000000001024
+                         *  请求结果: 刷盘false
+                         *  ******** 组提交请求结束 ********
+                         */
                         boolean flushOK = false;
                         for (int i = 0; i < 2 && !flushOK; i++) {
                             long flushedWhere = CommitLog.this.mappedFileQueue.getFlushedWhere();
                             long nextOffset = req.getNextOffset();
                             flushOK = flushedWhere >= nextOffset;
-                            logger.warn(">>>>>>>>>> index: {} , flushedWhere nextOffset {} - {} = {} flushOK {}",
-                                i, flushedWhere, nextOffset, (flushedWhere - nextOffset), flushOK);
-
+                            logger.warn("组提交重试次数:{}, 已刷盘位置:{}, 等待刷盘位置:{}, 结果: 刷盘{}", i, flushedWhere, nextOffset, flushOK ? "成功" : "失败");
                             if (!flushOK) {
-                                CommitLog.this.mappedFileQueue.flush(0);
+                                CommitLog.this.mappedFileQueue.flush(0, true);
                             //    此处再检查一次 我觉得会更好
                             //    flushedWhere = CommitLog.this.mappedFileQueue.getFlushedWhere();
                             //    nextOffset = req.getNextOffset();
@@ -1126,7 +1137,8 @@ public class CommitLog {
                         }
 
                         req.wakeupCustomer(flushOK);
-                        logger.info("***************************");
+                        logger.info("组提交请求结果: 刷盘{}", flushOK ? "成功" : "失败");
+                        logger.info("******** 组提交请求结束 ********");
                     }
 
                     long storeTimestamp = CommitLog.this.mappedFileQueue.getStoreTimestamp();
@@ -1153,7 +1165,7 @@ public class CommitLog {
                     this.doCommit();
                     long end = System.currentTimeMillis() - start;
                     if (end > 0) {
-                        logger.warn(" doCommit time is  {} ms", end);
+                        //logger.warn("一次组提交耗时: {} ms", end);
                     }
                 } catch (Exception e) {
                     CommitLog.log.warn(this.getServiceName() + " service has exception. ", e);

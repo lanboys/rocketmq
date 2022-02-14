@@ -23,13 +23,13 @@ import org.apache.rocketmq.common.SystemClock;
 import org.apache.rocketmq.common.ThreadFactoryImpl;
 import org.apache.rocketmq.common.UtilAll;
 import org.apache.rocketmq.common.constant.LoggerName;
-import org.apache.rocketmq.logging.InternalLogger;
-import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.common.message.MessageDecoder;
 import org.apache.rocketmq.common.message.MessageExt;
 import org.apache.rocketmq.common.message.MessageExtBatch;
 import org.apache.rocketmq.common.running.RunningStats;
 import org.apache.rocketmq.common.sysflag.MessageSysFlag;
+import org.apache.rocketmq.logging.InternalLogger;
+import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.store.config.BrokerRole;
 import org.apache.rocketmq.store.config.MessageStoreConfig;
 import org.apache.rocketmq.store.config.StorePathConfigHelper;
@@ -45,10 +45,12 @@ import java.io.RandomAccessFile;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileLock;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -59,6 +61,9 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.apache.rocketmq.common.MixAll.CID_SYS_RMQ_TRANS;
+import static org.apache.rocketmq.common.MixAll.RMQ_SYS_TRANS_HALF_TOPIC;
+import static org.apache.rocketmq.common.MixAll.RMQ_SYS_TRANS_OP_HALF_TOPIC;
 import static org.apache.rocketmq.store.config.BrokerRole.SLAVE;
 
 public class DefaultMessageStore implements MessageStore {
@@ -473,6 +478,11 @@ public class DefaultMessageStore implements MessageStore {
     public GetMessageResult getMessage(final String group, final String topic, final int queueId, final long offset,
         final int maxMsgNums,
         final MessageFilter messageFilter) {
+        List<String> list = Arrays.asList(CID_SYS_RMQ_TRANS, RMQ_SYS_TRANS_HALF_TOPIC, RMQ_SYS_TRANS_OP_HALF_TOPIC);
+        if (!list.contains(topic)) {
+            log.info("获取消息 group: {}, topic: {}, queueId: {}, offset: {}, maxMsgNums: {}",
+                group, topic, queueId, offset, maxMsgNums);
+        }
         if (this.shutdown) {
             log.warn("message store has shutdown, so getMessage is forbidden");
             return null;
@@ -602,10 +612,17 @@ public class DefaultMessageStore implements MessageStore {
 
                         nextBeginOffset = offset + (i / ConsumeQueue.CQ_STORE_UNIT_SIZE);
 
+                        // maxOffsetPy 本地最大偏移
+                        // maxPhyOffsetPulling 拉取的偏移量
                         long diff = maxOffsetPy - maxPhyOffsetPulling;
-                        long memory = (long) (StoreUtil.TOTAL_PHYSICAL_MEMORY_SIZE
-                            * (this.messageStoreConfig.getAccessMessageInMemoryMaxRatio() / 100.0));
-                        getResult.setSuggestPullingFromSlave(diff > memory);
+                        // 总的物理内存的 40%
+                        long memory = (long) (StoreUtil.TOTAL_PHYSICAL_MEMORY_SIZE * (this.messageStoreConfig.getAccessMessageInMemoryMaxRatio() / 100.0));
+                        boolean suggestPullingFromSlave = diff > memory;
+                        if (suggestPullingFromSlave) {
+                            log.info("建议从slave服务器中拉取消息, 本地最大偏移: {}, 拉取偏移量: {}, 相差: {}, 40%的物理内存大小(byte): {}, {}GB",
+                                maxOffsetPy, maxPhyOffsetPulling, diff, memory, (memory / (1024 * 1024 * 1024)));
+                        }
+                        getResult.setSuggestPullingFromSlave(suggestPullingFromSlave);
                     } finally {
 
                         bufferConsumeQueue.release();

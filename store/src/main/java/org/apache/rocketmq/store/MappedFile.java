@@ -23,6 +23,8 @@ import org.apache.rocketmq.common.UtilAll;
 import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.common.message.MessageExt;
 import org.apache.rocketmq.common.message.MessageExtBatch;
+import org.apache.rocketmq.logging.InternalLogger;
+import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.store.config.FlushDiskType;
 import org.apache.rocketmq.store.util.LibC;
 
@@ -39,8 +41,7 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.rocketmq.logging.InternalLogger;
-import org.apache.rocketmq.logging.InternalLoggerFactory;
+
 import sun.nio.ch.DirectBuffer;
 
 public class MappedFile extends ReferenceResource {
@@ -58,8 +59,9 @@ public class MappedFile extends ReferenceResource {
     protected FileChannel fileChannel;
     /**
      * Message will put to here first, and then reput to FileChannel if writeBuffer is not null.
+     * 临时存放数据的地方，CommitRealTimeService 线程定时将数据提交到 FileChannel，这是在不采用mmap时的方案
      */
-    protected ByteBuffer writeBuffer = null;
+    protected ByteBuffer writeBuffer = null;// 取决于 transientStorePool 是否为空
     protected TransientStorePool transientStorePool = null;
     private String fileName;
     private long fileFromOffset;
@@ -280,14 +282,16 @@ public class MappedFile extends ReferenceResource {
                 try {
                     //We only append data to fileChannel or mappedByteBuffer, never both.
                     if (writeBuffer != null || this.fileChannel.position() != 0) {
+                        //使用了 TransientStorePool
                         this.fileChannel.force(false);
                     } else {
+                        //使用mmap
                         this.mappedByteBuffer.force();
                     }
                 } catch (Throwable e) {
                     log.error("Error occurred when force data to disk.", e);
                 }
-                // 更新刷盘位置，保证当前位置之前的数据已经落盘(注意：在执行force方法前其实数据就有可能已经落盘了，这是由操作系统自动刷盘决定的)
+                // 更新当前文件的刷盘位置，保证当前位置之前的数据已经落盘(注意：在执行force方法前其实数据就有可能已经落盘了，这是由操作系统自动刷盘决定的)
                 this.flushedPosition.set(value);
                 this.release();
             } else {

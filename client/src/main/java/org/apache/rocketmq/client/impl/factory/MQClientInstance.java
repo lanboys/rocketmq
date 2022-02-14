@@ -1030,7 +1030,7 @@ public class MQClientInstance {
             slave = brokerId != MixAll.MASTER_ID;
             found = brokerAddr != null;
 
-            if (!found && !onlyThisBroker) {
+            if (!found && !onlyThisBroker) {// 传进来的brokerId找不到的话，就找broker列表的第一个
                 Entry<Long, String> entry = map.entrySet().iterator().next();
                 brokerAddr = entry.getValue();
                 slave = entry.getKey() != MixAll.MASTER_ID;

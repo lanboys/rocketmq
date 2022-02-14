@@ -17,6 +17,12 @@
 package org.apache.rocketmq.store.config;
 
 public enum FlushDiskType {
+    /**
+     * 同步 SYNC_FLUSH：组提交, 只能使用mmap
+     */
     SYNC_FLUSH,
+    /**
+     * 异步 ASYNC_FLUSH：定时刷盘, 可使用mmap和TransientStorePool
+     */
     ASYNC_FLUSH
 }

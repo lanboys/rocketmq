@@ -18,6 +18,8 @@ package org.apache.rocketmq.store;
 
 import org.apache.rocketmq.common.UtilAll;
 import org.apache.rocketmq.common.constant.LoggerName;
+import org.apache.rocketmq.logging.InternalLogger;
+import org.apache.rocketmq.logging.InternalLoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,8 +29,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.concurrent.CopyOnWriteArrayList;
-import org.apache.rocketmq.logging.InternalLogger;
-import org.apache.rocketmq.logging.InternalLoggerFactory;
 
 public class MappedFileQueue {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
@@ -425,15 +425,21 @@ public class MappedFileQueue {
     }
 
     public boolean flush(final int flushLeastPages) {
+        return flush(flushLeastPages, false);
+    }
+
+    public boolean flush(final int flushLeastPages, boolean logFlag) {
         boolean result = true;
         MappedFile mappedFile = this.findMappedFileByOffset(this.flushedWhere, this.flushedWhere == 0);
         if (mappedFile != null) {
             long tmpTimeStamp = mappedFile.getStoreTimestamp();
-            int offset = mappedFile.flush(flushLeastPages);
-            long where = mappedFile.getFileFromOffset() + offset;
+            int offset = mappedFile.flush(flushLeastPages);// mappedFile 内的刷盘位置
+            long where = mappedFile.getFileFromOffset() + offset;// 全局刷盘位置
             result = where == this.flushedWhere;
+            if (logFlag) {
+                logger.info("全局刷盘位置: 前: {}, 后: {}, 当前文件刷盘位置: {}, 文件: {}", flushedWhere, where, offset, mappedFile.getFileName());
+            }
             this.flushedWhere = where;
-            //logger.info("flushedWhere {} mappedFile {}", flushedWhere, mappedFile.getFileName());
             if (0 == flushLeastPages) {
                 this.storeTimestamp = tmpTimeStamp;
             }
