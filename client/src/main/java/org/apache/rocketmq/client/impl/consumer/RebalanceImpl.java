@@ -47,8 +47,10 @@ import java.util.concurrent.ConcurrentMap;
 public abstract class RebalanceImpl {
     protected static final InternalLogger log = ClientLogger.getLog();
     protected final ConcurrentMap<MessageQueue, ProcessQueue> processQueueTable = new ConcurrentHashMap<MessageQueue, ProcessQueue>(64);
+    // 已订阅的主题的队列信息，未订阅的不在这里
     protected final ConcurrentMap<String/* topic */, Set<MessageQueue>> topicSubscribeInfoTable =
         new ConcurrentHashMap<String, Set<MessageQueue>>();
+    // 消费组订阅的主题数据，可以订阅多个主题
     protected final ConcurrentMap<String /* topic */, SubscriptionData> subscriptionInner =
         new ConcurrentHashMap<String, SubscriptionData>();
     protected String consumerGroup;
@@ -219,6 +221,7 @@ public abstract class RebalanceImpl {
     }
 
     public void doRebalance(final boolean isOrder) {
+        // 订阅主题表
         Map<String, SubscriptionData> subTable = this.getSubscriptionInner();
         if (subTable != null) {
             for (final Map.Entry<String, SubscriptionData> entry : subTable.entrySet()) {
@@ -260,6 +263,7 @@ public abstract class RebalanceImpl {
                 break;
             }
             case CLUSTERING: {
+                // 获取topic下所有消费队列
                 Set<MessageQueue> mqSet = this.topicSubscribeInfoTable.get(topic);
                 // 主动获取同topic 同group 下所有的的消费者id
                 List<String> cidAll = this.mQClientFactory.findConsumerIdList(topic, consumerGroup);
@@ -405,7 +409,7 @@ public abstract class RebalanceImpl {
                 }
             }
         }
-
+        // 分发拉请求
         this.dispatchPullRequest(pullRequestList);
 
         return changed;

@@ -78,6 +78,7 @@ public class PullMessageService extends ServiceThread {
     }
 
     private void pullMessage(final PullRequest pullRequest) {
+        // 通过组来获取消费者，一个消费者只能属于一个组，一个jvm应用中一个组只能有一个消费者
         final MQConsumerInner consumer = this.mQClientFactory.selectConsumer(pullRequest.getConsumerGroup());
         if (consumer != null) {
             DefaultMQPushConsumerImpl impl = (DefaultMQPushConsumerImpl) consumer;
@@ -93,7 +94,8 @@ public class PullMessageService extends ServiceThread {
 
         while (!this.isStopped()) {
             try {
-                // 轮训拉消息请求
+                // 单线程 轮训拉消息请求，可以向多个不同的broker拉取，同一个broker也可以是多个不同topic
+                // 一个请求 对应一个队列
                 PullRequest pullRequest = this.pullRequestQueue.take();
                 this.pullMessage(pullRequest);
             } catch (InterruptedException ignored) {

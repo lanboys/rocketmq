@@ -32,12 +32,14 @@ public class PushConsumer {
         final DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("a-group");
         consumer.setNamesrvAddr("localhost:9876");
         consumer.subscribe("aaaaa", "*");
+        //consumer.subscribe("bbbbb", "*");// 订阅多个主题
         consumer.setConsumeFromWhere(ConsumeFromWhere.CONSUME_FROM_FIRST_OFFSET);
         //wrong time format 2017_0422_221800
         //consumer.setConsumeTimestamp("20170422221800");
         consumer.setPullBatchSize(5);
-        consumer.setConsumeMessageBatchMaxSize(5);
+        //consumer.setConsumeMessageBatchMaxSize(5);
         //consumer.setPullInterval(20000);
+        consumer.setPullThresholdForQueue(100);
         consumer.registerMessageListener(new MessageListenerConcurrently() {
 
             @Override
@@ -48,6 +50,7 @@ public class PushConsumer {
                 context.setAckIndex(-1);//设置消费成功的索引
                 for (int i = 0; i < msgs.size(); i++) {
                     try {
+                        Thread.sleep(10000);
                         MessageExt msg = msgs.get(i);
                         byte[] body = msg.getBody();
                         //if (i == 4) {

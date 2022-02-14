@@ -16,7 +16,6 @@
  */
 package org.apache.rocketmq.example.simple;
 
-import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.client.producer.DefaultMQProducer;
 import org.apache.rocketmq.client.producer.SendResult;
 import org.apache.rocketmq.common.message.Message;
@@ -26,7 +25,7 @@ import java.util.UUID;
 
 public class Producer {
 
-  public static void main(String[] args) throws MQClientException {
+  public static void main(String[] args) throws Exception {
 
     DefaultMQProducer producer = new DefaultMQProducer("ProducerGroupName");
     // 更新路由信息定时任务时间间隔
@@ -37,24 +36,26 @@ public class Producer {
     producer.setNamesrvAddr("localhost:9876");
     producer.start();
 
-    long l = System.currentTimeMillis();
-    for (int i = 0; i < 1; i++)
-      try {
-        StringBuilder builder = new StringBuilder();
-        //for (int j = 6; j < 300; j++) {
-        //for (int j = 6; j < 1024; j++) {
-        //builder.append("8");
-        //}
-        builder.append("我是消息-").append(i).append("*******").append(UUID.randomUUID().toString());
-        byte[] bytes = builder.toString().getBytes(RemotingHelper.DEFAULT_CHARSET);
-        Message msg = new Message("aaaaa", "Tag-index-" + i, "key-" + l + "-" + i, bytes);
-
-        SendResult sendResult = producer.send(msg);
-        System.out.printf("%s%n", sendResult);
-      } catch (Exception e) {
-        e.printStackTrace();
+    int index = 0;
+    while (true) {
+      int read = System.in.read();
+      if (read == 10) { // 回车
+        continue;
       }
-
-    producer.shutdown();
+      int all = 1;
+      long l = System.currentTimeMillis();
+      for (int i = index; i < index + all; i++) {
+        try {
+          byte[] bytes = ("我是消息-" + i + "-" + UUID.randomUUID().toString()).getBytes(RemotingHelper.DEFAULT_CHARSET);
+          Message msg = new Message("aaaaa", "Tag-index-" + i, "key-" + l + "-" + i, bytes);
+          SendResult sendResult = producer.send(msg);
+          System.out.printf("%s%n", sendResult);
+          Thread.sleep(10);
+        } catch (Exception e) {
+          e.printStackTrace();
+        }
+      }
+      index += all;
+    }
   }
 }
