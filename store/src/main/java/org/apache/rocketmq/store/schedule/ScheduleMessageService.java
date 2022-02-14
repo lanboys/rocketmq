@@ -16,24 +16,16 @@
  */
 package org.apache.rocketmq.store.schedule;
 
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import org.apache.rocketmq.common.ConfigManager;
 import org.apache.rocketmq.common.TopicFilterType;
 import org.apache.rocketmq.common.constant.LoggerName;
-import org.apache.rocketmq.logging.InternalLogger;
-import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.common.message.MessageAccessor;
 import org.apache.rocketmq.common.message.MessageConst;
 import org.apache.rocketmq.common.message.MessageDecoder;
 import org.apache.rocketmq.common.message.MessageExt;
 import org.apache.rocketmq.common.running.RunningStats;
+import org.apache.rocketmq.logging.InternalLogger;
+import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.store.ConsumeQueue;
 import org.apache.rocketmq.store.ConsumeQueueExt;
 import org.apache.rocketmq.store.DefaultMessageStore;
@@ -42,6 +34,15 @@ import org.apache.rocketmq.store.PutMessageResult;
 import org.apache.rocketmq.store.PutMessageStatus;
 import org.apache.rocketmq.store.SelectMappedBufferResult;
 import org.apache.rocketmq.store.config.StorePathConfigHelper;
+
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class ScheduleMessageService extends ConfigManager {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
@@ -94,7 +95,7 @@ public class ScheduleMessageService extends ConfigManager {
 
     public long computeDeliverTimestamp(final int delayLevel, final long storeTimestamp) {
         Long time = this.delayLevelTable.get(delayLevel);
-        if (time != null) {
+        if (time != null) {// 计算消息推送到真实队列的时间戳
             return time + storeTimestamp;
         }
 
@@ -112,6 +113,7 @@ public class ScheduleMessageService extends ConfigManager {
             }
 
             if (timeDelay != null) {
+                // 启动各个级别的定时任务，定时任务里面又会循环启动新的定时任务
                 this.timer.schedule(new DeliverDelayedMessageTimerTask(level, offset), FIRST_DELAY_TIME);
             }
         }
@@ -230,11 +232,16 @@ public class ScheduleMessageService extends ConfigManager {
 
             long result = deliverTimestamp;
 
-            long maxTimestamp = now + ScheduleMessageService.this.delayLevelTable.get(this.delayLevel);
+            long delay = ScheduleMessageService.this.delayLevelTable.get(this.delayLevel);
+            long maxTimestamp = now + delay;
             if (deliverTimestamp > maxTimestamp) {
+                // 通常执行不到这里，除非手动修改delayLevel配置，
+                // 比如 delayLevel = 1 本来 delay 时间是200s，修改该级别的 delay = 10s，立马重新启动，此时会执行这里，
+                // 结果是还不到200s就会将消息发送到真实队列，直到该队列数据正常为止
                 result = now;
             }
-
+            log.info("延时消息，获取下次执行的时间戳 now: {}, deliverTimestamp: {}, delay: {}, result: {}",
+                now, deliverTimestamp, delay, result);
             return result;
         }
 
@@ -274,7 +281,7 @@ public class ScheduleMessageService extends ConfigManager {
 
                             nextOffset = offset + (i / ConsumeQueue.CQ_STORE_UNIT_SIZE);
 
-                            long countdown = deliverTimestamp - now;
+                            long countdown = deliverTimestamp - now;// 剩下的时间
 
                             if (countdown <= 0) {
                                 MessageExt msgExt =
@@ -317,6 +324,8 @@ public class ScheduleMessageService extends ConfigManager {
                                     }
                                 }
                             } else {
+                                // 消费队列中的第一条消息还不到时间，countdown 时间后再执行一次
+                                // 第一条消息时间不到，后面的消息都同样不到时间
                                 ScheduleMessageService.this.timer.schedule(
                                     new DeliverDelayedMessageTimerTask(this.delayLevel, nextOffset),
                                     countdown);
@@ -326,6 +335,7 @@ public class ScheduleMessageService extends ConfigManager {
                         } // end of for
 
                         nextOffset = offset + (i / ConsumeQueue.CQ_STORE_UNIT_SIZE);
+                        // 消费队列无消息，DELAY_FOR_A_WHILE 后再执行一次
                         ScheduleMessageService.this.timer.schedule(new DeliverDelayedMessageTimerTask(
                             this.delayLevel, nextOffset), DELAY_FOR_A_WHILE);
                         ScheduleMessageService.this.updateOffset(this.delayLevel, nextOffset);
@@ -346,6 +356,7 @@ public class ScheduleMessageService extends ConfigManager {
                 }
             } // end of if (cq != null)
 
+            // 找不到该级别的消费队列，DELAY_FOR_A_WHILE 后再执行一次
             ScheduleMessageService.this.timer.schedule(new DeliverDelayedMessageTimerTask(this.delayLevel,
                 failScheduleOffset), DELAY_FOR_A_WHILE);
         }
