@@ -122,7 +122,7 @@ public class PullRequestHoldService extends ServiceThread {
             List<PullRequest> requestList = mpr.cloneListAndClear();
             if (requestList != null) {
                 List<PullRequest> replayList = new ArrayList<PullRequest>();
-
+                // 多个消费组对 同一个topic同一个queue 的拉请求
                 for (PullRequest request : requestList) {
                     long newestOffset = maxOffset;
                     if (newestOffset <= request.getPullFromThisOffset()) {
@@ -130,10 +130,16 @@ public class PullRequestHoldService extends ServiceThread {
                     }
 
                     if (newestOffset > request.getPullFromThisOffset()) {
+                        // 根据消费队列过滤：
+                        //          TAG类型：根据tags过滤
+                        //          SQL92类型：根据布隆过滤器过滤
                         boolean match = request.getMessageFilter().isMatchedByConsumeQueue(tagsCode,
                             new ConsumeQueueExt.CqExtUnit(tagsCode, msgStoreTime, filterBitMap));
                         // match by bit map, need eval again when properties is not null.
                         if (match && properties != null) {
+                            // 根据消息内容过滤：
+                            //          TAG类型：直接返回 true
+                            //          SQL92类型：根据sql过滤
                             match = request.getMessageFilter().isMatchedByCommitLog(null, properties);
                         }
 

@@ -30,22 +30,25 @@ import java.util.List;
 public class SqlConsumer {
 
     public static void main(String[] args) {
-        DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("please_rename_unique_group_name_4");
+        DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("a-group");
+        consumer.setNamesrvAddr("localhost:9876");
         try {
-            consumer.subscribe("TopicTest",
-                MessageSelector.bySql("(TAGS is not null and TAGS in ('TagA', 'TagB'))" +
-                    "and (a is not null and a between 0  3)"));
+            consumer.subscribe("aaaaa", MessageSelector.bySql("(TAGS is not null and TAGS in ('TagA', 'TagB')) and (a is not null and a between 0 and 3)"));
         } catch (MQClientException e) {
             e.printStackTrace();
             return;
         }
-
         consumer.registerMessageListener(new MessageListenerConcurrently() {
 
             @Override
             public ConsumeConcurrentlyStatus consumeMessage(List<MessageExt> msgs,
                 ConsumeConcurrentlyContext context) {
-                System.out.printf("%s Receive New Messages: %s %n", Thread.currentThread().getName(), msgs);
+                //System.out.printf("%s Receive New Messages: %s %n", Thread.currentThread().getName(), msgs);
+                for (MessageExt msg : msgs) {
+                    byte[] body = msg.getBody();
+                    System.out.println(Thread.currentThread().getName() + " 消费成功：" + new String(body) + " keys: " + msg.getKeys()
+                        + " queueId: " + msg.getQueueId() + " queueOffset: " + msg.getQueueOffset() + " reconsumeTimes: " + msg.getReconsumeTimes() + " topic: " + msg.getTopic());
+                }
                 return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
             }
         });

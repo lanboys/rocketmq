@@ -93,6 +93,7 @@ public class ExpressionMessageFilter implements MessageFilter {
             }
 
             byte[] filterBitMap = cqExtUnit.getFilterBitMap();
+            //布隆过滤器
             BloomFilter bloomFilter = this.consumerFilterManager.getBloomFilter();
             if (filterBitMap == null || !this.bloomDataValid
                 || filterBitMap.length * Byte.SIZE != consumerFilterData.getBloomFilterData().getBitNum()) {
@@ -138,13 +139,14 @@ public class ExpressionMessageFilter implements MessageFilter {
         }
 
         if (tempProperties == null && msgBuffer != null) {
+            // 解析出消息的属性
             tempProperties = MessageDecoder.decodeProperties(msgBuffer);
         }
 
         Object ret = null;
         try {
             MessageEvaluationContext context = new MessageEvaluationContext(tempProperties);
-
+            // 执行sql过滤
             ret = realFilterData.getCompiledExpression().evaluate(context);
         } catch (Throwable e) {
             log.error("Message Filter error, " + realFilterData + ", " + tempProperties, e);

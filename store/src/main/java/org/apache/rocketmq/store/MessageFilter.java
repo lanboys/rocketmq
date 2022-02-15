@@ -21,6 +21,10 @@ import java.util.Map;
 
 public interface MessageFilter {
     /**
+     * 根据消费队列过滤：
+     *          TAG类型：根据tags过滤
+     *          SQL92类型：根据布隆过滤器过滤
+     *
      * match by tags code or filter bit map which is calculated when message received
      * and stored in consume queue ext.
      *
@@ -31,6 +35,10 @@ public interface MessageFilter {
         final ConsumeQueueExt.CqExtUnit cqExtUnit);
 
     /**
+     * 根据消息内容进行过滤：
+     *          TAG类型： 直接匹配成功
+     *          SQL92类型： 根据sql过滤，过滤消息中的属性，tags也在属性中，所以tags也会参与过滤
+     *
      * match by message content which are stored in commit log.
      * <br>{@code msgBuffer} and {@code properties} are not all null.If invoked in store,
      * {@code properties} is null;If invoked in {@code PullRequestHoldService}, {@code msgBuffer} is null.

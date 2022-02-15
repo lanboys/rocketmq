@@ -23,10 +23,13 @@ import org.apache.rocketmq.client.producer.SendResult;
 import org.apache.rocketmq.common.message.Message;
 import org.apache.rocketmq.remoting.common.RemotingHelper;
 
+import java.io.IOException;
+
 public class SqlProducer {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         DefaultMQProducer producer = new DefaultMQProducer("please_rename_unique_group_name");
+        producer.setNamesrvAddr("localhost:9876");
         try {
             producer.start();
         } catch (MQClientException e) {
@@ -34,7 +37,11 @@ public class SqlProducer {
             return;
         }
 
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 1000; i++) {
+            int read = System.in.read();
+            if (read == 10) { // 回车
+                continue;
+            }
             try {
                 String tag;
                 int div = i % 3;
@@ -45,21 +52,13 @@ public class SqlProducer {
                 } else {
                     tag = "TagC";
                 }
-                Message msg = new Message("TopicTest",
-                    tag,
-                    ("Hello RocketMQ " + i).getBytes(RemotingHelper.DEFAULT_CHARSET)
-                );
-                msg.putUserProperty("a", String.valueOf(i));
+                Message msg = new Message("aaaaa", tag, ("我是消息-" + i).getBytes(RemotingHelper.DEFAULT_CHARSET));
+                msg.putUserProperty("a", String.valueOf(i % 4));
 
                 SendResult sendResult = producer.send(msg);
                 System.out.printf("%s%n", sendResult);
             } catch (Exception e) {
                 e.printStackTrace();
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e1) {
-                    e1.printStackTrace();
-                }
             }
         }
         producer.shutdown();
