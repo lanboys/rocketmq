@@ -19,10 +19,12 @@ package org.apache.rocketmq.client.consumer.listener;
 public enum ConsumeConcurrentlyStatus {
     /**
      * Success consumption
+     * 多个消息的时候 ，可以设置 ackIndex 表示消费成功到哪里了
      */
     CONSUME_SUCCESS,
     /**
      * Failure consumption,later try to consume
+     * 效果等于 ackIndex == -1
      */
     RECONSUME_LATER;
 }

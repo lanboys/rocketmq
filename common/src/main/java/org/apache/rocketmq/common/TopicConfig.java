@@ -18,6 +18,29 @@ package org.apache.rocketmq.common;
 
 import org.apache.rocketmq.common.constant.PermName;
 
+/**
+ * 读写队列
+ *
+ * 从物理上来讲，读写队列是同一个队列。所以，不存在读写队列数据同步问题。读写队列是逻辑上进行区
+ * 分的概念。一般情况下，读写队列数量是一样的。
+ *
+ * 例如,创建Topic时设置的写队列数量为8,读队列数量为4,此时系统会创建8个 Queue,分别是0 1 2 3 4 5 6 7。
+ * Producer会将消息写入到这8个队列,但 Consumer只会消费0 1 2 3这4个队列中的消息,4 5 6 7中的消息是不会被消费到的。
+ *
+ * 再如,创建 Topic 时设置的写队列数量为4,读队列数量为8,此时系统会创建8个 Queue,分别是0 1 2 3 4 5 6 7。
+ * Producer会将消息写入到0 1 2 3这4个队列,但 Consumer只会消费0 1 2 3 4 5 6 7这8个队列中的消息,但是4567中
+ * 是没有消息的。此时假设Consumer Group中包含两个Consumer，Consumer1消费0 1 2 3，而Consumer2消费4 5 6 7。
+ * 但实际情况，Consumer2是没有消息可以消费。
+ *
+ * 也就是当读写队列数量不一致时，总是有问题的。其这样设计的目的是为了方便Topic的Queue的缩容。
+ *
+ * 例如,原来创建的Topic中包含16个Queue,如何能够使其Queue缩容为8个,还不会丢失消息?可以动态修改写队列数量
+ * 为8,读队列数量不变。此时新的消息只能写入到前8个队列,而消费都消费的却是16个队列中的数据。当发现后8个
+ * Queue中的消息消费完毕后,就可以再将读队列数量动态设置为8.
+ *
+ * perm
+ * perm用于设置对当前创建Topic的操作权限：2表示只写，4表示只读，6表示读写
+ */
 public class TopicConfig {
     private static final String SEPARATOR = " ";
     public static int defaultReadQueueNums = 16;

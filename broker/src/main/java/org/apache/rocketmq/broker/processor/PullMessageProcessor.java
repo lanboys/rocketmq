@@ -133,6 +133,7 @@ public class PullMessageProcessor implements NettyRequestProcessor {
             return response;
         }
 
+        // 检查权限，死信队列主题默认就是 2 (只写)，所以想要订阅死信队列消息，需要在控制面板打开可写权限，改为可读写权限 6
         if (!PermName.isReadable(topicConfig.getPerm())) {
             response.setCode(ResponseCode.NO_PERMISSION);
             response.setRemark("the topic[" + requestHeader.getTopic() + "] pulling message is forbidden");

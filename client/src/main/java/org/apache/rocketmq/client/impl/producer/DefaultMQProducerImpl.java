@@ -529,7 +529,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                             callTimeout = true;
                             break;
                         }
-
+                        // 通常没抛异常表示发送消息成功了
                         sendResult = this.sendKernelImpl(msg, mq, communicationMode, sendCallback, topicPublishInfo, timeout - costTime);
                         endTimestamp = System.currentTimeMillis();
                         this.updateFaultItem(mq.getBrokerName(), endTimestamp - beginTimestampPrev, false);
@@ -598,11 +598,13 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                     break;
                 }
             }
-
+            // sendResult通常为空? 因为不为空前面已经返回了
             if (sendResult != null) {
+                // 不为空表明成功发消息给broker了，为空表示抛异常了，发送失败
                 return sendResult;
             }
 
+            // 执行到这里基本上是重试了多次，都是失败的
             String info = String.format("Send [%d] times, still failed, cost [%d]ms, Topic: %s, BrokersSent: %s",
                 times,
                 System.currentTimeMillis() - beginTimestampFirst,

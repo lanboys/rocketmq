@@ -66,7 +66,7 @@ public class PushConsumer {
                     }
                 }
 
-                //return ConsumeConcurrentlyStatus.RECONSUME_LATER;
+                //return ConsumeConcurrentlyStatus.RECONSUME_LATER; 效果等于 ackIndex == -1
                 return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
             }
         });

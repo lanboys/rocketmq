@@ -29,8 +29,8 @@ public class SubscriptionGroupConfig {
     private boolean consumeBroadcastEnable = true;
 
     private int retryQueueNums = 1;
-
-    private int retryMaxTimes = 16;
+    // 最大重试次数，无法在控制台配置(可以提交pr)，可以命令行配置
+    private int retryMaxTimes = 3;
 
     private long brokerId = MixAll.MASTER_ID;
 

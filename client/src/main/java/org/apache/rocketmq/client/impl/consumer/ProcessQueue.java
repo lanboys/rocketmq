@@ -22,6 +22,7 @@ import org.apache.rocketmq.common.message.MessageAccessor;
 import org.apache.rocketmq.common.message.MessageConst;
 import org.apache.rocketmq.common.message.MessageExt;
 import org.apache.rocketmq.common.protocol.body.ProcessQueueInfo;
+import org.apache.rocketmq.logging.InternalLogger;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,7 +34,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import org.apache.rocketmq.logging.InternalLogger;
 
 /**
  * Queue consumption snapshot
@@ -203,7 +203,13 @@ public class ProcessQueue {
                     }
                     msgCount.addAndGet(removedCnt);
 
-                    if (!msgTreeMap.isEmpty()) {// 还有没消费完的消息，就选第一个为offset
+                    /**
+                     * 还有没消费完的消息，就选第一个为offset, 第一offset消息可能出现耗时操作，
+                     * 而offset后面的消息已经消费完成，此时也只能更新第一个offset, 如果消费者
+                     * 此时死机，那么后面的已经消费的那部分消息，下次就会出现重复消费的情况，所
+                     * 以需要使用方保证消息消费的幂等性
+                     */
+                    if (!msgTreeMap.isEmpty()) {
                         result = msgTreeMap.firstKey();
                     }
                 }

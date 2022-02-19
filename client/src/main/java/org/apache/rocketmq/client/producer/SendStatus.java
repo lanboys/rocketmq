@@ -16,6 +16,9 @@
  */
 package org.apache.rocketmq.client.producer;
 
+/**
+ * 消息都发送成功了，后面三者只是具体的发送状态
+ */
 public enum SendStatus {
     SEND_OK,
     FLUSH_DISK_TIMEOUT,

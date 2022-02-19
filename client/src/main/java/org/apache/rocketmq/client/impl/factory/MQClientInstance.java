@@ -212,7 +212,7 @@ public class MQClientInstance {
         Set<MessageQueue> mqList = new HashSet<MessageQueue>();
         List<QueueData> qds = route.getQueueDatas();
         for (QueueData qd : qds) {
-            if (PermName.isReadable(qd.getPerm())) {
+            if (PermName.isReadable(qd.getPerm())) {// 检查主题权限，比如死信队列默认权限是 2 不可读，控制面板查询不了他的消息
                 for (int i = 0; i < qd.getReadQueueNums(); i++) {
                     MessageQueue mq = new MessageQueue(topic, qd.getBrokerName(), i);
                     mqList.add(mq);

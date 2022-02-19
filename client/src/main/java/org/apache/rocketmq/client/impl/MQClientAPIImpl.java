@@ -16,17 +16,6 @@
  */
 package org.apache.rocketmq.client.impl;
 
-import java.io.UnsupportedEncodingException;
-import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.rocketmq.client.ClientConfig;
 import org.apache.rocketmq.client.consumer.PullCallback;
 import org.apache.rocketmq.client.consumer.PullResult;
@@ -151,6 +140,18 @@ import org.apache.rocketmq.remoting.netty.ResponseFuture;
 import org.apache.rocketmq.remoting.protocol.LanguageCode;
 import org.apache.rocketmq.remoting.protocol.RemotingCommand;
 import org.apache.rocketmq.remoting.protocol.RemotingSerializable;
+
+import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class MQClientAPIImpl {
 
@@ -501,7 +502,8 @@ public class MQClientAPIImpl {
             }
             case ResponseCode.SUCCESS: {
                 SendStatus sendStatus = SendStatus.SEND_OK;
-                switch (response.getCode()) {
+                switch (response.getCode()) {// 转换一下发送消息的状态
+                    // 发送成功
                     case ResponseCode.FLUSH_DISK_TIMEOUT:
                         sendStatus = SendStatus.FLUSH_DISK_TIMEOUT;
                         break;
@@ -514,7 +516,7 @@ public class MQClientAPIImpl {
                     case ResponseCode.SUCCESS:
                         sendStatus = SendStatus.SEND_OK;
                         break;
-                    default:
+                    default:// 其他code都是发送失败
                         assert false;
                         break;
                 }
@@ -552,7 +554,7 @@ public class MQClientAPIImpl {
             default:
                 break;
         }
-
+        // 通常没抛异常表示发送消息成功了
         throw new MQBrokerException(response.getCode(), response.getRemark());
     }
 

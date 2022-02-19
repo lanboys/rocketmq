@@ -29,7 +29,7 @@ public class Producer {
 
     DefaultMQProducer producer = new DefaultMQProducer("ProducerGroupName");
     // 更新路由信息定时任务时间间隔
-    producer.setPollNameServerInterval(1000 * 18000);
+    // producer.setPollNameServerInterval(1000 * 18000);
     // 故障延迟机制
     producer.setSendLatencyFaultEnable(true);
 
@@ -48,6 +48,7 @@ public class Producer {
         try {
           byte[] bytes = ("我是消息-" + i + "-" + UUID.randomUUID().toString()).getBytes(RemotingHelper.DEFAULT_CHARSET);
           Message msg = new Message("aaaaa", "Tag-index-" + i, "key-" + l + "-" + i, bytes);
+          // 通常没抛异常表示发送消息成功了，只是状态有多种
           SendResult sendResult = producer.send(msg);
           System.out.printf("%s%n", sendResult);
           Thread.sleep(10);

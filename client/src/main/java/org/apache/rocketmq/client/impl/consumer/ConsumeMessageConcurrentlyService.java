@@ -241,8 +241,10 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
     public void resetRetryTopic(final List<MessageExt> msgs) {
         final String groupTopic = MixAll.getRetryTopic(consumerGroup);
         for (MessageExt msg : msgs) {
-            String retryTopic = msg.getProperty(MessageConst.PROPERTY_RETRY_TOPIC);
+            String retryTopic = msg.getProperty(MessageConst.PROPERTY_RETRY_TOPIC);// 真实的topic 不带%RETRY%
             if (retryTopic != null && groupTopic.equals(msg.getTopic())) {
+                // 重试队列里面的消息要恢复真实的topic, 这里面的消息如果再次消费失败, 会以原始topic放回
+                // 重试队列(其实相当于一个新的消费失败的消息), 如果有消息一直消费不成功，会出现重试队列的进度不断增长
                 msg.setTopic(retryTopic);
             }
         }
@@ -281,7 +283,7 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
                 this.getConsumerStatsManager().incConsumeFailedTPS(consumerGroup, consumeRequest.getMessageQueue().getTopic(), failed);
                 break;
             case RECONSUME_LATER:
-                ackIndex = -1;
+                ackIndex = -1;// 直接改为-1 表示全部消费失败
                 this.getConsumerStatsManager().incConsumeFailedTPS(consumerGroup, consumeRequest.getMessageQueue().getTopic(),
                     consumeRequest.getMsgs().size());
                 break;
@@ -303,6 +305,7 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
                     MessageExt msg = consumeRequest.getMsgs().get(i);
                     // 将未成功消费的消息发送回重试主题队列
                     boolean result = this.sendMessageBack(msg, context);
+                    // 仍然失败则稍后继续由当前消费者继续消费
                     if (!result) {
                         msg.setReconsumeTimes(msg.getReconsumeTimes() + 1);
                         msgBackFailed.add(msg);
@@ -311,7 +314,7 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
 
                 if (!msgBackFailed.isEmpty()) {
                     consumeRequest.getMsgs().removeAll(msgBackFailed);
-                    // 5s后再次提交消费请求（没有成功发送回重试主题队列的消息）
+                    // 5s后再次提交消费请求（没有成功发回的消息）
                     this.submitConsumeRequestLater(msgBackFailed, consumeRequest.getProcessQueue(), consumeRequest.getMessageQueue());
                 }
                 break;

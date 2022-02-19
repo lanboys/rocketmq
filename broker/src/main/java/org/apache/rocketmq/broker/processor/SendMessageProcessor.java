@@ -134,7 +134,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             response.setRemark(null);
             return response;
         }
-
+        // 放到重试队列里面
         String newTopic = MixAll.getRetryTopic(requestHeader.getGroup());
         int queueIdInt = Math.abs(this.random.nextInt() % 99999999) % subscriptionGroupConfig.getRetryQueueNums();
 
@@ -142,7 +142,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         if (requestHeader.isUnitMode()) {
             topicSysFlag = TopicSysFlag.buildSysFlag(false, true);
         }
-
+        // 创建重试主题
         TopicConfig topicConfig = this.brokerController.getTopicConfigManager().createTopicInSendMessageBackMethod(
             newTopic,
             subscriptionGroupConfig.getRetryQueueNums(),
@@ -171,7 +171,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             MessageAccessor.putProperty(msgExt, MessageConst.PROPERTY_RETRY_TOPIC, msgExt.getTopic());
         }
         msgExt.setWaitStoreMsgOK(false);
-
+        // 不会立马放重试队列，而是先放延时队列
         int delayLevel = requestHeader.getDelayLevel();
 
         int maxReconsumeTimes = subscriptionGroupConfig.getRetryMaxTimes();
@@ -181,12 +181,19 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
 
         if (msgExt.getReconsumeTimes() >= maxReconsumeTimes
             || delayLevel < 0) {
+            // 一个死信队列包含了对应 Group ID 产生的所有死信消息，不论该消息属于哪个 Topic
+            // 死信队列也可以跟普通消息一样被订阅和消费，不一样的是里面记录重试次数，重试次数超限，直接进死信队列
+            // 如果消费组一样，则又会放回同一个死信队列，进入死循环
+            // 如果不同消费组，则直接放到那个消费组的死信队列，相当于把死信消息搬运到了另一个死信队列中
+
+            // 修改为死信队列主题 Dead-Letter Message
             newTopic = MixAll.getDLQTopic(requestHeader.getGroup());
             queueIdInt = Math.abs(this.random.nextInt() % 99999999) % DLQ_NUMS_PER_GROUP;
 
             topicConfig = this.brokerController.getTopicConfigManager().createTopicInSendMessageBackMethod(newTopic,
                 DLQ_NUMS_PER_GROUP,
-                PermName.PERM_WRITE, 0
+                PermName.PERM_WRITE,  // 只写(2)权限，可以在控制面板修改为6可读写
+                0
             );
             if (null == topicConfig) {
                 response.setCode(ResponseCode.SYSTEM_ERROR);
@@ -194,6 +201,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
                 return response;
             }
         } else {
+            // 根据重试次数决定延时级别
             if (0 == delayLevel) {
                 delayLevel = 3 + msgExt.getReconsumeTimes();
             }
@@ -214,11 +222,11 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         msgInner.setBornTimestamp(msgExt.getBornTimestamp());
         msgInner.setBornHost(msgExt.getBornHost());
         msgInner.setStoreHost(this.getStoreHost());
-        msgInner.setReconsumeTimes(msgExt.getReconsumeTimes() + 1);
+        msgInner.setReconsumeTimes(msgExt.getReconsumeTimes() + 1);// 重试次数加1
 
         String originMsgId = MessageAccessor.getOriginMessageId(msgExt);
         MessageAccessor.setOriginMessageId(msgInner, UtilAll.isBlank(originMsgId) ? msgExt.getMsgId() : originMsgId);
-
+        // commitLog 文件中是会有一条新的消息，失败消息过多且一直无法成功消费的话，会导致commitLog增长很快，所以会有最大重试次数的限制
         PutMessageResult putMessageResult = this.brokerController.getMessageStore().putMessage(msgInner);
         if (putMessageResult != null) {
             switch (putMessageResult.getPutMessageStatus()) {
@@ -248,7 +256,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         response.setRemark("putMessageResult is null");
         return response;
     }
-
+    // 处理client端直接发往重试队列的消息，如果重试超限则放入死信队列
     private boolean handleRetryAndDLQ(SendMessageRequestHeader requestHeader, RemotingCommand response,
                                       RemotingCommand request,
                                       MessageExt msg, TopicConfig topicConfig) {
@@ -274,7 +282,8 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
                 int queueIdInt = Math.abs(this.random.nextInt() % 99999999) % DLQ_NUMS_PER_GROUP;
                 topicConfig = this.brokerController.getTopicConfigManager().createTopicInSendMessageBackMethod(newTopic,
                     DLQ_NUMS_PER_GROUP,
-                    PermName.PERM_WRITE, 0
+                    PermName.PERM_WRITE, // 只写(2)权限，可以在控制面板修改为6
+                    0
                 );
                 msg.setTopic(newTopic);
                 msg.setQueueId(queueIdInt);
@@ -334,6 +343,8 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         msgInner.setTopic(requestHeader.getTopic());
         msgInner.setQueueId(queueIdInt);
 
+        // 处理client端直接发往重试队列的消息，如果重试超限则放入死信队列
+        // DefaultMQPushConsumerImpl.sendMessageBack() 方法会直接发送消息到重试队列
         if (!handleRetryAndDLQ(requestHeader, response, request, msgInner, topicConfig)) {
             return response;
         }
@@ -362,7 +373,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         } else {
             putMessageResult = this.brokerController.getMessageStore().putMessage(msgInner);
         }
-
+        // 处理消息存储结果
         return handlePutMessageResult(putMessageResult, response, request, msgInner, responseHeader, sendMessageContext, ctx, queueIdInt);
 
     }
@@ -379,7 +390,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         boolean sendOK = false;
 
         switch (putMessageResult.getPutMessageStatus()) {
-            // Success
+            // Success 发消息成功的状态，code表示一些具体情况，不影响消息成功
             case PUT_OK:
                 sendOK = true;
                 response.setCode(ResponseCode.SUCCESS);
