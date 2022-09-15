@@ -16,6 +16,8 @@
  */
 package org.apache.rocketmq.namesrv;
 
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.joran.JoranConfigurator;
 import ch.qos.logback.core.joran.spi.JoranException;
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
@@ -37,14 +39,21 @@ import org.apache.rocketmq.remoting.netty.NettyServerConfig;
 import org.apache.rocketmq.remoting.protocol.RemotingCommand;
 import org.apache.rocketmq.srvutil.ServerUtil;
 import org.apache.rocketmq.srvutil.ShutdownHookThread;
+import org.slf4j.LoggerFactory;
 
 public class NamesrvStartup {
 
     private static InternalLogger log;
     private static Properties properties = null;
     private static CommandLine commandLine = null;
+    public static String configFile = null;
 
     public static void main(String[] args) {
+        // 覆盖原来的 user.home, 数据及日志都存在此处
+        System.setProperty("user.home", System.getProperty("user.home") + "\\namesrv");
+        // 配置 ROCKETMQ_HOME
+        System.setProperty("rocketmq.home.dir", System.getProperty("user.dir") + "\\.run");
+
         main0(args);
     }
 
@@ -55,7 +64,12 @@ public class NamesrvStartup {
             start(controller);
             String tip = "The Name Server boot success. serializeType=" + RemotingCommand.getSerializeTypeConfigInThisServer();
             log.info(tip);
+            System.out.println("==========================================================");
+            System.out.printf("ROCKETMQ_HOME 环境变量: %s%n", System.getProperty("rocketmq.home.dir"));
+            System.out.printf("数据及日志存放位置 : %s%n", System.getProperty("user.home"));
+            System.out.printf("配置文件路径: %s%n", configFile);
             System.out.printf("%s%n", tip);
+            System.out.println("==========================================================");
             return controller;
         } catch (Throwable e) {
             e.printStackTrace();
@@ -75,13 +89,16 @@ public class NamesrvStartup {
             System.exit(-1);
             return null;
         }
+        String projectConfPath = System.getProperty("user.dir") + "\\.run\\conf\\";
 
         final NamesrvConfig namesrvConfig = new NamesrvConfig();
         final NettyServerConfig nettyServerConfig = new NettyServerConfig();
-        nettyServerConfig.setListenPort(9876);
+        // nettyServerConfig.setListenPort(9876);
         if (commandLine.hasOption('c')) {
             String file = commandLine.getOptionValue('c');
             if (file != null) {
+                file = projectConfPath  + file;
+                configFile = file;
                 InputStream in = new BufferedInputStream(new FileInputStream(file));
                 properties = new Properties();
                 properties.load(in);
@@ -109,11 +126,11 @@ public class NamesrvStartup {
             System.exit(-2);
         }
 
-        //LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
-        //JoranConfigurator configurator = new JoranConfigurator();
-        //configurator.setContext(lc);
-        //lc.reset();
-        //configurator.doConfigure(namesrvConfig.getRocketmqHome() + "/conf/logback_namesrv.xml");
+        LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
+        JoranConfigurator configurator = new JoranConfigurator();
+        configurator.setContext(lc);
+        lc.reset();
+        configurator.doConfigure(namesrvConfig.getRocketmqHome() + "/conf/logback_namesrv.xml");
 
         log = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
 
