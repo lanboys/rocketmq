@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="org.apache.rocketmq.namesrv.NamesrvStartup" type="Application" factoryName="Application" nameIsGenerated="true">
+  <configuration default="false" name="NamesrvStartup" type="Application" factoryName="Application">
     <option name="MAIN_CLASS_NAME" value="org.apache.rocketmq.namesrv.NamesrvStartup" />
     <module name="rocketmq-namesrv" />
     <option name="PROGRAM_PARAMETERS" value="-c namesrv.conf" />
