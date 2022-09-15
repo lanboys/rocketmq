@@ -36,12 +36,18 @@ import org.apache.rocketmq.remoting.protocol.RemotingCommand;
 import org.apache.rocketmq.srvutil.ServerUtil;
 import org.apache.rocketmq.store.config.BrokerRole;
 import org.apache.rocketmq.store.config.MessageStoreConfig;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.joran.JoranConfigurator;
+import ch.qos.logback.classic.util.ContextInitializer;
 
 import static org.apache.rocketmq.remoting.netty.TlsSystemConfig.TLS_ENABLE;
 
@@ -52,6 +58,9 @@ public class BrokerStartup {
     public static InternalLogger log;
 
     public static void main(String[] args) {
+        // 配置 ROCKETMQ_HOME
+        System.setProperty("rocketmq.home.dir", System.getProperty("user.dir") + "\\.run");
+
         start(createBrokerController(args));
     }
 
@@ -68,7 +77,12 @@ public class BrokerStartup {
             }
 
             log.info(tip);
+            System.out.println("==========================================================");
+            System.out.printf("ROCKETMQ_HOME 环境变量: %s%n", System.getProperty("rocketmq.home.dir"));
+            System.out.printf("数据及日志存放位置 : %s%n", System.getProperty("user.home"));
+            System.out.printf("配置文件路径: %s%n", configFile);
             System.out.printf("%s%n", tip);
+            System.out.println("==========================================================");
             return controller;
         } catch (Throwable e) {
             e.printStackTrace();
@@ -110,25 +124,23 @@ public class BrokerStartup {
 
             nettyClientConfig.setUseTLS(Boolean.parseBoolean(System.getProperty(TLS_ENABLE,
                 String.valueOf(TlsSystemConfig.tlsMode == TlsMode.ENFORCING))));
-            nettyServerConfig.setListenPort(Integer.valueOf(args[4]));
+            // nettyServerConfig.setListenPort(10911);
             final MessageStoreConfig messageStoreConfig = new MessageStoreConfig();
 
             if (BrokerRole.SLAVE == messageStoreConfig.getBrokerRole()) {
                 int ratio = messageStoreConfig.getAccessMessageInMemoryMaxRatio() - 10;
                 messageStoreConfig.setAccessMessageInMemoryMaxRatio(ratio);
             }
+            String projectConfPath = System.getProperty("user.dir") + "\\.run\\conf\\";
 
             if (commandLine.hasOption('c')) {
-                //-c E:\xxxx\rocketmq\broker\src\main\resources\broker-b.conf
                 String file = commandLine.getOptionValue('c');
                 if (file != null) {
+                    file = projectConfPath + file;
                     configFile = file;
                     InputStream in = new BufferedInputStream(new FileInputStream(file));
                     properties = new Properties();
                     properties.load(in);
-                    // 配置
-                    //properties.setProperty("storePathRootDir", "E:\\rocketmq\\data\\cluster-1\\broker-a\\store");
-                    //properties.setProperty("storePathCommitLog", "E:\\rocketmq\\data\\cluster-1\\broker-a\\store\\commitlog");
 
                     properties2SystemEnv(properties);
                     MixAll.properties2Object(properties, brokerConfig);
@@ -138,6 +150,20 @@ public class BrokerStartup {
 
                     BrokerPathConfigHelper.setBrokerConfigPath(file);
                     in.close();
+
+                    // 覆盖原来的 user.home，数据及日志都存在此处，因本地一台机上会运行多个 broker ，所以需要区分
+                    System.setProperty("user.home", System.getProperty("user.home")
+                            + File.separator + "broker"
+                            + File.separator + brokerConfig.getBrokerClusterName()
+                            + File.separator + brokerConfig.getBrokerName()
+                            + File.separator + brokerConfig.getBrokerId() + "-" + messageStoreConfig.getBrokerRole()
+                    );
+
+                    // 重新设置 数据存储路径
+                    messageStoreConfig.setStorePathRootDir(System.getProperty("user.home") + File.separator + "store");
+                    messageStoreConfig.setStorePathCommitLog(System.getProperty("user.home") + File.separator + "store"
+                            + File.separator + "commitlog");
+
                 }
             }
 
@@ -180,11 +206,11 @@ public class BrokerStartup {
             }
 
             messageStoreConfig.setHaListenPort(nettyServerConfig.getListenPort() + 1);
-            //LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
-            //JoranConfigurator configurator = new JoranConfigurator();
-            //configurator.setContext(lc);
-            //lc.reset();
-            //configurator.doConfigure(brokerConfig.getRocketmqHome() + "/conf/logback_broker.xml");
+            LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
+            JoranConfigurator configurator = new JoranConfigurator();
+            configurator.setContext(lc);
+            lc.reset();
+            configurator.doConfigure(brokerConfig.getRocketmqHome() + "/conf/logback_broker.xml");
 
             if (commandLine.hasOption('p')) {
                 InternalLogger console = InternalLoggerFactory.getLogger(LoggerName.BROKER_CONSOLE_NAME);
