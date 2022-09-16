@@ -6,7 +6,7 @@ public class TopicSimpleCreator {
 
   public static void main(String[] args) {
     DefaultMQProducer producer = new DefaultMQProducer("please_rename_unique_group_name");
-    producer.setNamesrvAddr("localhost:9876");
+    producer.setNamesrvAddr("localhost:19876");
     try {
       producer.start();
 
