@@ -25,6 +25,7 @@ import org.apache.rocketmq.broker.pagecache.OneMessageTransfer;
 import org.apache.rocketmq.broker.pagecache.QueryMessageTransfer;
 import org.apache.rocketmq.common.MixAll;
 import org.apache.rocketmq.common.constant.LoggerName;
+import org.apache.rocketmq.common.message.MessageExt;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.common.protocol.RequestCode;
@@ -52,8 +53,10 @@ public class QueryMessageProcessor implements NettyRequestProcessor {
         throws RemotingCommandException {
         switch (request.getCode()) {
             case RequestCode.QUERY_MESSAGE:
+                // 对应 MQAdmin 的方法 MessageExt viewMessage(String topic, String msgId)
                 return this.queryMessage(ctx, request);
             case RequestCode.VIEW_MESSAGE_BY_ID:
+                // 对应 MQAdmin 的方法 MessageExt viewMessage(final String offsetMsgId)
                 return this.viewMessageById(ctx, request);
             default:
                 break;

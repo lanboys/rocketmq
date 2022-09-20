@@ -1,11 +1,11 @@
-package org.apache.rocketmq.example.topic;
+package org.apache.rocketmq.example.oopcoder.topic;
 
 import org.apache.rocketmq.client.producer.DefaultMQProducer;
 
 public class TopicSimpleCreator {
 
     public static void main(String[] args) {
-        DefaultMQProducer producer = new DefaultMQProducer("please_rename_unique_group_name");
+        DefaultMQProducer producer = new DefaultMQProducer("p_group");
         producer.setNamesrvAddr("localhost:19876");
         try {
             producer.start();
