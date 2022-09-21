@@ -83,15 +83,23 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+/*
+ *  一个 MQClientInstance 实例中，一个 group 只能有一个 生产者/消费者/管理员 实例
+ *  一个 jvm 进程中，同一个 group 想要多个消费者实例，那就只能创建多个 MQClientInstance 实例了
+ *
+ *  什么场景会需要多个 MQClientInstance 实例？
+ *  同一个 MQClientInstance 实例，ClientConfig 都是共用的，也就是配置一样，如果需要不一样的配置，
+ *  比如想要连接别的 rocketmq, 此时 namesrv 不一样，就需要新的实例 MQClientInstance
+ *
+ */
 public class MQClientInstance {
     private final static long LOCK_TIMEOUT_MILLIS = 3000;
     private final InternalLogger log = ClientLogger.getLog();
+    // 生产者/消费者/管理员 共用同一个配置
     private final ClientConfig clientConfig;
     private final int instanceIndex;
     private final String clientId;
     private final long bootTimestamp = System.currentTimeMillis();
-    // 一个消费者只能属于一个组，一个jvm应用中一个组只能有一个消费者
-    // 一个group只允许有一个实例
     private final ConcurrentMap<String/* group */, MQProducerInner> producerTable = new ConcurrentHashMap<String, MQProducerInner>();
     private final ConcurrentMap<String/* group */, MQConsumerInner> consumerTable = new ConcurrentHashMap<String, MQConsumerInner>();
     private final ConcurrentMap<String/* group */, MQAdminExtInner> adminExtTable = new ConcurrentHashMap<String, MQAdminExtInner>();

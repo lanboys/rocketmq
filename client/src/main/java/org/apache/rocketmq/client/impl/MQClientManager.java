@@ -46,12 +46,13 @@ public class MQClientManager {
     }
 
     public MQClientInstance getAndCreateMQClientInstance(final ClientConfig clientConfig, RPCHook rpcHook) {
-        //如：192.168.110.26@329256  一个进程一个实例，生产者消费者共用一个实例
+        // 如：192.168.110.26@329256  一个进程可以有多个客户端实例，clientId @后面的实例名称是可以修改的
+        // 客户端实例里面包括 各种 生产者/消费者/admin 实例
         String clientId = clientConfig.buildMQClientId();
         MQClientInstance instance = this.factoryTable.get(clientId);
         if (null == instance) {
-            instance =
-                new MQClientInstance(clientConfig.cloneClientConfig(),
+            // 客户端配置，由第一个启动的 生产者/消费者/admin实例 来决定
+            instance = new MQClientInstance(clientConfig.cloneClientConfig(),
                     this.factoryIndexGenerator.getAndIncrement(), clientId, rpcHook);
             MQClientInstance prev = this.factoryTable.putIfAbsent(clientId, instance);
             if (prev != null) {

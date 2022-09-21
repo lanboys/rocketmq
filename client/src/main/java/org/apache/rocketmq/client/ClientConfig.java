@@ -82,6 +82,7 @@ public class ClientConfig {
     }
 
     public void changeInstanceNameToPID() {
+        // 默认的 instanceName 才会修改为pid, 如果是自定义的实例名，那么不作修改
         if (this.instanceName.equals("DEFAULT")) {
             this.instanceName = String.valueOf(UtilAll.getPid());
         }
