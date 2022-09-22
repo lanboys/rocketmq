@@ -12,9 +12,18 @@ public class TopicSimpleCreator {
 
             // key 可以是 cluster 或 broker 的名称，这两者默认都是 系统topic，管理后台页面勾选 System，就可以看到
             // key 的作用，获取 broker 的地址
-            // String key = "cluster-1";
-            String key = "broker-1";
-            producer.createTopic(key, "aaaaa", 4);
+
+            String[] keys = {"cluster-1", "cluster-2", "broker-1", "standalone-cluster", "standalone-broker"};
+            // String key = "standalone-cluster";
+            // String key = "broker-1";
+
+            for (String key : keys) {
+                try {
+                    producer.createTopic(key, "aaaaa", 4);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
             System.out.println("topic were created .");
         } catch (Exception e) {
             e.printStackTrace();
