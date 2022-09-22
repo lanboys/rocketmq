@@ -79,7 +79,7 @@ public class BrokerStartup {
             log.info(tip);
             System.out.println("==========================================================");
             System.out.printf("ROCKETMQ_HOME 环境变量: %s%n", System.getProperty("rocketmq.home.dir"));
-            System.out.printf("数据及日志存放位置 : %s%n", System.getProperty("user.home"));
+            System.out.printf("数据及日志存放位置: %s%n", System.getProperty("user.home"));
             System.out.printf("配置文件路径: %s%n", configFile);
             System.out.printf("%s%n", tip);
             System.out.println("==========================================================");

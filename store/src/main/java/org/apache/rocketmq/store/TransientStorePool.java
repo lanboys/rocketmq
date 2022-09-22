@@ -16,12 +16,14 @@
  */
 package org.apache.rocketmq.store;
 
+import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
 
 import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.store.config.MessageStoreConfig;
+import org.apache.rocketmq.store.util.LibC;
 
 import java.nio.ByteBuffer;
 import java.util.Deque;
@@ -52,8 +54,8 @@ public class TransientStorePool {
             ByteBuffer byteBuffer = ByteBuffer.allocateDirect(fileSize);
 
             final long address = ((DirectBuffer) byteBuffer).address();
-            Pointer pointer = new Pointer(address);
-            //LibC.INSTANCE.mlock(pointer, new NativeLong(fileSize));
+            // Pointer pointer = new Pointer(address);
+            // LibC.INSTANCE.mlock(pointer, new NativeLong(fileSize));
 
             availableBuffers.offer(byteBuffer);
         }
@@ -62,8 +64,8 @@ public class TransientStorePool {
     public void destroy() {
         for (ByteBuffer byteBuffer : availableBuffers) {
             final long address = ((DirectBuffer) byteBuffer).address();
-            Pointer pointer = new Pointer(address);
-            //LibC.INSTANCE.munlock(pointer, new NativeLong(fileSize));
+            // Pointer pointer = new Pointer(address);
+            // LibC.INSTANCE.munlock(pointer, new NativeLong(fileSize));
         }
     }
 

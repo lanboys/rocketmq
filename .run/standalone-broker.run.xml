@@ -1,0 +1,17 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="standalone-broker" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="org.apache.rocketmq.broker.BrokerStartup" />
+    <module name="rocketmq-broker" />
+    <option name="PROGRAM_PARAMETERS" value="-c standalone-broker.conf" />
+    <option name="VM_PARAMETERS" value="-Duser.home=E:\rocketmq" />
+    <extension name="coverage">
+      <pattern>
+        <option name="PATTERN" value="org.apache.rocketmq.broker.*" />
+        <option name="ENABLED" value="true" />
+      </pattern>
+    </extension>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
