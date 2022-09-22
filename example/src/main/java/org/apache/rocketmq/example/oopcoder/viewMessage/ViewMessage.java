@@ -32,7 +32,8 @@ public class ViewMessage {
         consumer.start();
         System.out.printf("Consumer Started.%n");
         // MessageId 就是 uniqKey
-        MessageExt message = consumer.viewMessage("%RETRY%c-group", "AC1B1A5A385C18B4AAC2606CE0F80000");
+        MessageExt message = consumer.viewMessage("RMQ_SYS_TRANS_HALF_TOPIC", "AC1B1A5A48B418B4AAC26E13480B0000");
+        // MessageExt message = consumer.viewMessage("%RETRY%c-group", "AC1B1A5A385C18B4AAC2606CE0F80000");
         // MessageExt message = consumer.viewMessage("aaaaa", "AC1B1A5A385C18B4AAC2606CE0F80000");
         PrintUtil.printMessage(message);
 

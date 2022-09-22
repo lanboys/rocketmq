@@ -372,7 +372,7 @@ public class MQAdminImpl {
                             if (msgExt.getMsgId().equals(key)) {
 
                                 if (messageList.size() > 0) {
-                                    // 查询的时候会返回所有消息，只会返回存储时间最晚的那条消息
+                                    // 查询的时候会返回所有消息，只会返回存储时间最早的那条消息
                                     // 比如重试队列里面就存在多条 MessageId 一样的消息，消息内容一样，部分属性 (commitLogOffset/reconsumeTimes/queueOffset) 不一样
                                     if (messageList.get(0).getStoreTimestamp() > msgExt.getStoreTimestamp()) {
 
