@@ -99,6 +99,7 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
                 putMessageResult.getAppendMessageResult().getLogicsOffset());
             msgExt.setCommitLogOffset(
                 putMessageResult.getAppendMessageResult().getWroteOffset());
+            // 事务消息 msgId 更新的地方
             msgExt.setMsgId(putMessageResult.getAppendMessageResult().getMsgId());
             log.info(
                 "Send check message, the offset={} restored in queueOffset={} "
