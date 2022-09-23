@@ -170,6 +170,7 @@ public class BrokerConfig {
 
     /**
      * Transaction message check interval.
+     * 事务回查时间间隔
      */
     @ImportantField
     private long transactionCheckInterval = 1 * 60 * 1000;
