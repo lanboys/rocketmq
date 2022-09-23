@@ -9,7 +9,6 @@ import org.apache.rocketmq.client.producer.TransactionMQProducer;
 import org.apache.rocketmq.common.UtilAll;
 import org.apache.rocketmq.common.message.Message;
 import org.apache.rocketmq.common.message.MessageExt;
-import org.apache.rocketmq.example.utils.PrintUtil;
 import org.apache.rocketmq.remoting.common.RemotingHelper;
 
 import java.io.IOException;
@@ -117,7 +116,7 @@ public class InnerTransactionProducer {
         @Override
         public LocalTransactionState checkLocalTransaction(MessageExt msg) {
             System.out.println("开始执行本地事务回查方法... " + msg.getTransactionId());
-            PrintUtil.printMessage(msg);
+            // PrintUtil.printMessage(msg);
 
             // 模拟从事务表或者业务表中查询是否存在 msgId，存在意味着本地事务已经提交成功，
             // 那么事务半消息就可以正式提交到对应的 topic 队列里面了
@@ -127,12 +126,22 @@ public class InnerTransactionProducer {
                 System.out.println("本地事务回查成功，提交消息... " + msg.getTransactionId());
                 return LocalTransactionState.COMMIT_MESSAGE;
             }
-            // System.out.println("本地事务回查失败，回滚消息... " + msg.getTransactionId());
-            // return LocalTransactionState.ROLLBACK_MESSAGE;
 
-            // 模拟未知状态
-            System.out.println("本地事务回查状态未知... " + msg.getTransactionId());
-            return LocalTransactionState.UNKNOW;
+            System.out.println("本地事务回查失败，回滚消息... " + msg.getTransactionId());
+            return LocalTransactionState.ROLLBACK_MESSAGE;
+
+            // ======================
+            // 以下是为了测试
+            // long status = System.currentTimeMillis() % 2;
+            // if (status == 0) {
+            //     System.out.println("本地事务回查失败，回滚消息... " + msg.getTransactionId());
+            //     return LocalTransactionState.ROLLBACK_MESSAGE;
+            // }
+            //
+            // // 模拟未知状态
+            // // 实际应用中，回查的时候是不存在未知状态的，因为本地事务已经结束，要么成功，要么失败
+            // System.out.println("本地事务回查状态未知... " + msg.getTransactionId());
+            // return LocalTransactionState.UNKNOW;
         }
     }
 
