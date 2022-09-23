@@ -48,4 +48,13 @@ public class OperationResult {
     public void setResponseRemark(String responseRemark) {
         this.responseRemark = responseRemark;
     }
+
+    @Override
+    public String toString() {
+        return "OperationResult{" +
+                "prepareMessage=" + prepareMessage +
+                ", responseCode=" + responseCode +
+                ", responseRemark='" + responseRemark + '\'' +
+                '}';
+    }
 }

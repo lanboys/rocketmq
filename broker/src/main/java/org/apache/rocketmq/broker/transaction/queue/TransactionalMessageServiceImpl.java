@@ -69,12 +69,15 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
         int checkTime = 1;
         if (null != checkTimes) {
             checkTime = getInt(checkTimes);
+            log.info("事务消息回查次数：{}, 最大次数：{}", checkTime, transactionCheckMax);
             if (checkTime >= transactionCheckMax) {
+                log.info("事务消息回查次数超限：{}", msgExt);
                 return true;
             } else {
                 checkTime++;
             }
         }
+        log.info("更新事务消息回查次数：{}", checkTime);
         msgExt.putUserProperty(MessageConst.PROPERTY_TRANSACTION_CHECK_TIMES, String.valueOf(checkTime));
         return false;
     }
@@ -102,9 +105,9 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
             // 事务消息 msgId 更新的地方
             msgExt.setMsgId(putMessageResult.getAppendMessageResult().getMsgId());
             log.info(
-                "Send check message, the offset={} restored in queueOffset={} "
+                "发送回查消息 Send check message, the offset={} restored in queueOffset={} "
                     + "commitLogOffset={} "
-                    + "newMsgId={} realMsgId={} topic={}",
+                    + "新消息Id newMsgId={} realMsgId={} topic={}",
                 offset, msgExt.getQueueOffset(), msgExt.getCommitLogOffset(), msgExt.getMsgId(),
                 msgExt.getUserProperty(MessageConst.PROPERTY_UNIQ_CLIENT_MESSAGE_ID_KEYIDX),
                 msgExt.getTopic());
@@ -128,7 +131,7 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
                 log.warn("The queue of topic is empty :" + topic);
                 return;
             }
-            log.info("Check topic={}, queues={}", topic, msgQueues);
+            log.info("回查Check 主题topic={}, 队列queues={}", topic, msgQueues);
             for (MessageQueue messageQueue : msgQueues) {
                 long startTime = System.currentTimeMillis();
                 MessageQueue opQueue = getOpQueue(messageQueue);
@@ -150,6 +153,10 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
                         messageQueue, halfOffset, opOffset);
                     continue;
                 }
+                log.info("半消息队列偏移量 halfOffset={}", halfOffset);
+                log.info("操作队列偏移量 opOffset={}", opOffset);
+                log.info("需要移除的消息 removeMap= {}", removeMap);
+                log.info("已经处理的消息 doneOpOffset= {}", doneOpOffset);
                 // single thread
                 int getMessageNullCount = 1;
                 long newOffset = halfOffset;
@@ -160,7 +167,7 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
                         break;
                     }
                     if (removeMap.containsKey(i)) {
-                        log.info("Half offset {} has been committed/rolled back", i);
+                        log.info("事务半消息已经提交或者回滚了，不用再回查了，消息偏移量offset [{}] has been committed/rolled back", i);
                         removeMap.remove(i);
                     } else {
                         GetResult getResult = getHalfMsg(messageQueue, i);
@@ -184,13 +191,14 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
                         // 丢弃检查超限的消息
                         if (needDiscard(msgExt, transactionCheckMax) || needSkip(msgExt)) {
                             listener.resolveDiscardMsg(msgExt);
+                            log.info("消息丢弃成功，消息偏移量offset [{}]", i);
                             newOffset = i + 1;
                             i++;
                             continue;
                         }
                         if (msgExt.getStoreTimestamp() >= startTime) {
-                            log.info("Fresh stored. the miss offset={}, check it later, store={}", i,
-                                new Date(msgExt.getStoreTimestamp()));
+                            log.info("停止回查 Fresh stored. the miss offset={}, check it later, 消息存储时间：{}, 队列回查启动时间：{}", i,
+                                new Date(msgExt.getStoreTimestamp()), new Date(startTime));
                             break;
                         }
 
@@ -230,12 +238,14 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
                         }
 
                         if (isNeedCheck1 || isNeedCheck2 || isNeedCheck3) {
-                            // 把消息重新放回去，更改了检查次数
+                            // 更改了检查次数
+                            log.info("把消息重新放入半消息队列 offset={}", i);
                             if (!putBackHalfMsgQueue(msgExt, i)) {
                                 // 会再试一次
+                                log.info("重新放入半消息队列失败 offset={}", i);
                                 continue;
                             }
-                            // 发消息给生产者检查本地事务状态
+                            log.info("发消息给生产者检查本地事务状态 offset={}", i);
                             listener.resolveHalfMsg(msgExt);
                         } else {
                             pullResult = fillOpRemoveMap(removeMap, opQueue, pullResult.getNextBeginOffset(), halfOffset, doneOpOffset);
@@ -247,12 +257,17 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
                     newOffset = i + 1;
                     i++;
                 }// end while
+
+                log.info("新newOffset={} 旧halfOffset={}", newOffset, halfOffset);
                 if (newOffset != halfOffset) {
                     // 更新消费进度
+                    log.info("更新 [事务半消息队列] 消费进度, 新的offset={}", newOffset);
                     transactionalMessageBridge.updateConsumeOffset(messageQueue, newOffset);
                 }
                 long newOpOffset = calculateOpOffset(doneOpOffset, opOffset);
+                log.info("新newOpOffset={} 旧opOffset={}", newOpOffset, opOffset);
                 if (newOpOffset != opOffset) {
+                    log.info("更新 [操作队列] 消费进度, 新的offset={}", newOffset);
                     transactionalMessageBridge.updateConsumeOffset(opQueue, newOpOffset);
                 }
             }
@@ -484,22 +499,30 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
     @Override
     public boolean deletePrepareMessage(MessageExt msgExt) {
         if (this.transactionalMessageBridge.putOpMessage(msgExt, TransactionalMessageUtil.REMOVETAG)) {
-            log.info("Transaction op message write successfully. messageId={}, queueId={} msgExt:{}", msgExt.getMsgId(), msgExt.getQueueId(), msgExt);
+            log.info("操作消息写入(删除)成功 Transaction op message write successfully. messageId={}, queueId={} msgExt:{}",
+                    msgExt.getMsgId(), msgExt.getQueueId(), msgExt);
             return true;
         } else {
-            log.error("Transaction op message write failed. messageId is {}, queueId is {}", msgExt.getMsgId(), msgExt.getQueueId());
+            log.error("操作消息写入(删除)失败 Transaction op message write failed. messageId is {}, queueId is {}", msgExt.getMsgId(),
+                    msgExt.getQueueId());
             return false;
         }
     }
 
     @Override
     public OperationResult commitMessage(EndTransactionRequestHeader requestHeader) {
-        return getHalfMessageByOffset(requestHeader.getCommitLogOffset());
+        log.info("提交消息: -- {} --, {}", requestHeader.getTransactionId(), requestHeader);
+        OperationResult halfMessageByOffset = getHalfMessageByOffset(requestHeader.getCommitLogOffset());
+        log.info("提交消息结果: -- {} --, {}", requestHeader.getTransactionId(), halfMessageByOffset);
+        return halfMessageByOffset;
     }
 
     @Override
     public OperationResult rollbackMessage(EndTransactionRequestHeader requestHeader) {
-        return getHalfMessageByOffset(requestHeader.getCommitLogOffset());
+        log.info("回滚消息: -- {} --, {}", requestHeader.getTransactionId(), requestHeader);
+        OperationResult halfMessageByOffset = getHalfMessageByOffset(requestHeader.getCommitLogOffset());
+        log.info("回滚消息结果: -- {} --, {}", requestHeader.getTransactionId(), halfMessageByOffset);
+        return halfMessageByOffset;
     }
 
     @Override
