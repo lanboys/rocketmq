@@ -56,7 +56,7 @@ public class EndTransactionProcessor implements NettyRequestProcessor {
         final RemotingCommand response = RemotingCommand.createResponseCommand(null);
         final EndTransactionRequestHeader requestHeader =
             (EndTransactionRequestHeader)request.decodeCommandCustomHeader(EndTransactionRequestHeader.class);
-        LOGGER.info("Transaction request:{}", requestHeader);
+        // LOGGER.info("Transaction request:{}", requestHeader);
         if (BrokerRole.SLAVE == brokerController.getMessageStoreConfig().getBrokerRole()) {
             response.setCode(ResponseCode.SLAVE_NOT_AVAILABLE);
             LOGGER.warn("Message store is slave mode, so end transaction is forbidden. ");
@@ -66,7 +66,7 @@ public class EndTransactionProcessor implements NettyRequestProcessor {
         if (requestHeader.getFromTransactionCheck()) {
             switch (requestHeader.getCommitOrRollback()) {
                 case MessageSysFlag.TRANSACTION_NOT_TYPE: {
-                    LOGGER.warn("Check producer[{}] transaction state, but it's pending status."
+                    LOGGER.warn("未知 Check producer[{}] transaction state, but it's pending status."
                             + "RequestHeader: {} Remark: {}",
                         RemotingHelper.parseChannelRemoteAddr(ctx.channel()),
                         requestHeader.toString(),
@@ -76,7 +76,7 @@ public class EndTransactionProcessor implements NettyRequestProcessor {
                 }
 
                 case MessageSysFlag.TRANSACTION_COMMIT_TYPE: {
-                    LOGGER.warn("Check producer[{}] transaction state, the producer commit the message."
+                    LOGGER.warn("提交 Check producer[{}] transaction state, the producer commit the message."
                             + "RequestHeader: {} Remark: {}",
                         RemotingHelper.parseChannelRemoteAddr(ctx.channel()),
                         requestHeader.toString(),
@@ -86,7 +86,7 @@ public class EndTransactionProcessor implements NettyRequestProcessor {
                 }
 
                 case MessageSysFlag.TRANSACTION_ROLLBACK_TYPE: {
-                    LOGGER.warn("Check producer[{}] transaction state, the producer rollback the message."
+                    LOGGER.warn("回滚 Check producer[{}] transaction state, the producer rollback the message."
                             + "RequestHeader: {} Remark: {}",
                         RemotingHelper.parseChannelRemoteAddr(ctx.channel()),
                         requestHeader.toString(),
@@ -99,7 +99,7 @@ public class EndTransactionProcessor implements NettyRequestProcessor {
         } else {
             switch (requestHeader.getCommitOrRollback()) {
                 case MessageSysFlag.TRANSACTION_NOT_TYPE: {
-                    LOGGER.warn("The producer[{}] end transaction in sending message,  and it's pending status."
+                    LOGGER.warn("状态未知 The producer[{}] end transaction in sending message,  and it's pending status."
                             + "RequestHeader: {} Remark: {}",
                         RemotingHelper.parseChannelRemoteAddr(ctx.channel()),
                         requestHeader.toString(),
@@ -112,7 +112,7 @@ public class EndTransactionProcessor implements NettyRequestProcessor {
                 }
 
                 case MessageSysFlag.TRANSACTION_ROLLBACK_TYPE: {
-                    LOGGER.warn("The producer[{}] end transaction in sending message, rollback the message."
+                    LOGGER.warn("回滚 The producer[{}] end transaction in sending message, rollback the message."
                             + "RequestHeader: {} Remark: {}",
                         RemotingHelper.parseChannelRemoteAddr(ctx.channel()),
                         requestHeader.toString(),
@@ -128,6 +128,7 @@ public class EndTransactionProcessor implements NettyRequestProcessor {
             result = this.brokerController.getTransactionalMessageService().commitMessage(requestHeader);
             if (result.getResponseCode() == ResponseCode.SUCCESS) {
                 RemotingCommand res = checkPrepareMessage(result.getPrepareMessage(), requestHeader);
+                LOGGER.info("检查半消息结果: -- {} --, {}", requestHeader.getTransactionId(), res);
                 if (res.getCode() == ResponseCode.SUCCESS) {
                     // 还原真实的消息
                     MessageExtBrokerInner msgInner = endMessageTransaction(result.getPrepareMessage());
@@ -136,24 +137,37 @@ public class EndTransactionProcessor implements NettyRequestProcessor {
                     msgInner.setPreparedTransactionOffset(requestHeader.getCommitLogOffset());
                     msgInner.setStoreTimestamp(result.getPrepareMessage().getStoreTimestamp());
                     // 保存消息到真正的主题队列中去
+                    LOGGER.info("保存消息到真正的主题队列中去: {}", msgInner);
                     RemotingCommand sendResult = sendFinalMessage(msgInner);
+                    LOGGER.info("保存消息结果: {}", sendResult);
                     if (sendResult.getCode() == ResponseCode.SUCCESS) {
                         // 删除 half 消息，实际上是存储到 RMQ_SYS_TRANS_OP_HALF_TOPIC 主题队列中去
                         this.brokerController.getTransactionalMessageService().deletePrepareMessage(result.getPrepareMessage());
+                    } else {
+                        LOGGER.info("保存消息失败：{}", msgInner);
                     }
                     return sendResult;
+                } else {
+                    LOGGER.info("检查半消息失败：{}", requestHeader);
                 }
                 return res;
+            } else {
+                LOGGER.info("提交消息失败：{}", requestHeader);
             }
         } else if (MessageSysFlag.TRANSACTION_ROLLBACK_TYPE == requestHeader.getCommitOrRollback()) {
             result = this.brokerController.getTransactionalMessageService().rollbackMessage(requestHeader);
             if (result.getResponseCode() == ResponseCode.SUCCESS) {
                 RemotingCommand res = checkPrepareMessage(result.getPrepareMessage(), requestHeader);
+                LOGGER.info("检查半消息结果: -- {} --, {}", requestHeader.getTransactionId(), res);
                 if (res.getCode() == ResponseCode.SUCCESS) {
                     // 删除 half 消息，实际上是存储到 RMQ_SYS_TRANS_OP_HALF_TOPIC 主题队列中去
                     this.brokerController.getTransactionalMessageService().deletePrepareMessage(result.getPrepareMessage());
+                } else {
+                    LOGGER.info("检查半消息失败：{}", requestHeader);
                 }
                 return res;
+            } else {
+                LOGGER.info("提交消息失败：{}", requestHeader);
             }
         }
         response.setCode(result.getResponseCode());
