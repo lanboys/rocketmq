@@ -75,6 +75,10 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
 
     /**
      * Just for testing or demo program
+     * 自动创建 topic 模板，可以自己定义
+     *
+     * 需要将 aa 的权限 设置为 7，控制台设置
+     * producer.setCreateTopicKey("aaaaa");
      */
     private String createTopicKey = MixAll.AUTO_CREATE_TOPIC_KEY_TOPIC;
 

@@ -605,6 +605,7 @@ public class MQClientInstance {
                 try {
                     TopicRouteData topicRouteData;
                     if (isDefault && defaultMQProducer != null) {
+                        log.info("获取模板主题：{}", defaultMQProducer.getCreateTopicKey());
                         topicRouteData = this.mQClientAPIImpl.getDefaultTopicRouteInfoFromNameServer(defaultMQProducer.getCreateTopicKey(),
                             1000 * 3);
                         if (topicRouteData != null) {
@@ -623,7 +624,8 @@ public class MQClientInstance {
                         if (!changed) {
                             changed = this.isNeedUpdateTopicRouteInfo(topic);
                         } else {
-                            log.info("the topic[{}] route info changed, old[{}] ,new[{}]", topic, old, topicRouteData);
+                            log.info("路由信息需要更新 the topic[{}] route info changed, old[{}] ,new[{}]", topic, old,
+                                    topicRouteData);
                         }
 
                         if (changed) {
@@ -661,9 +663,12 @@ public class MQClientInstance {
                                     }
                                 }
                             }
-                            log.info("topicRouteTable.put. Topic = {}, TopicRouteData[{}]", topic, cloneTopicRouteData);
+                            log.info("更新本地主题路由表成功 Topic = {} topicRouteTable.put. Topic = {}, TopicRouteData[{}]",
+                                    topic, topic, cloneTopicRouteData);
                             this.topicRouteTable.put(topic, cloneTopicRouteData);
                             return true;
+                        } else {
+                            log.info("路由信息不需要更新 the topic[{}] route info not changed, [{}]", topic, topicRouteData);
                         }
                     } else {
                         log.warn("updateTopicRouteInfoFromNameServer, getTopicRouteInfoFromNameServer return null, Topic: {}", topic);
@@ -681,7 +686,7 @@ public class MQClientInstance {
         } catch (InterruptedException e) {
             log.warn("updateTopicRouteInfoFromNameServer Exception", e);
         }
-
+        log.warn("更新本地主题路由表失败 Topic = {}", topic);
         return false;
     }
 

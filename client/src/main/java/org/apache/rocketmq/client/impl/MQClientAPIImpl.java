@@ -1210,6 +1210,7 @@ public class MQClientAPIImpl {
         requestHeader.setTopic(topic);
 
         RemotingCommand request = RemotingCommand.createRequestCommand(RequestCode.GET_ROUTEINTO_BY_TOPIC, requestHeader);
+        log.warn("从服务器获取 Topic [{}] ", topic);
 
         RemotingCommand response = this.remotingClient.invokeSync(null, request, timeoutMillis);
         assert response != null;
@@ -1218,13 +1219,16 @@ public class MQClientAPIImpl {
                 if (allowTopicNotExist && !topic.equals(MixAll.AUTO_CREATE_TOPIC_KEY_TOPIC)) {
                     log.warn("get Topic [{}] RouteInfoFromNameServer is not exist value", topic);
                 }
+                log.warn("从服务器获取 Topic [{}] 不存在", topic);
 
                 break;
             }
             case ResponseCode.SUCCESS: {
                 byte[] body = response.getBody();
                 if (body != null) {
-                    return TopicRouteData.decode(body, TopicRouteData.class);
+                    TopicRouteData routeData = TopicRouteData.decode(body, TopicRouteData.class);
+                    log.warn("从服务器获取 Topic [{}] 存在：{}", topic, routeData);
+                    return routeData;
                 }
             }
             default:

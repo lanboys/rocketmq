@@ -642,18 +642,24 @@ public class DefaultMQProducerImpl implements MQProducerInner {
     }
 
     private TopicPublishInfo tryToFindTopicPublishInfo(final String topic) {
+        // TBW102 主题的作用 https://juejin.cn/post/7017974138534887455
         TopicPublishInfo topicPublishInfo = this.topicPublishInfoTable.get(topic);
         if (null == topicPublishInfo || !topicPublishInfo.ok()) {
+            log.info("本地路由表不存在主题信息，调用更新路由接口 {}", topic);
+            // 设置一个空对象进去
             this.topicPublishInfoTable.putIfAbsent(topic, new TopicPublishInfo());
             this.mQClientFactory.updateTopicRouteInfoFromNameServer(topic);
             topicPublishInfo = this.topicPublishInfoTable.get(topic);
         }
 
         if (topicPublishInfo.isHaveTopicRouterInfo() || topicPublishInfo.ok()) {
+            log.info("获取主题信息成功 {} ，{}", topic, topicPublishInfo);
             return topicPublishInfo;
         } else {
+            log.info("获取主题信息失败，再通过模板主题(默认是TBW102) 更新路由 {}", topic);
             this.mQClientFactory.updateTopicRouteInfoFromNameServer(topic, true, this.defaultMQProducer);
             topicPublishInfo = this.topicPublishInfoTable.get(topic);
+            log.info("尝试在本地路由表获取主题，结果 {} ，{}", topic, topicPublishInfo);
             return topicPublishInfo;
         }
     }
@@ -729,6 +735,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                 SendMessageRequestHeader requestHeader = new SendMessageRequestHeader();
                 requestHeader.setProducerGroup(this.defaultMQProducer.getProducerGroup());
                 requestHeader.setTopic(msg.getTopic());
+                // 如果允许自动创建主题，那么 topic 不存在的时候，需要创建主题，那么新创建主题的模板默认就是 TBW102
                 requestHeader.setDefaultTopic(this.defaultMQProducer.getCreateTopicKey());
                 requestHeader.setDefaultTopicQueueNums(this.defaultMQProducer.getDefaultTopicQueueNums());
                 requestHeader.setQueueId(mq.getQueueId());
