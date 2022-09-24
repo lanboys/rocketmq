@@ -229,7 +229,7 @@ public class RouteInfoManager {
             queueDataList = new LinkedList<QueueData>();
             queueDataList.add(queueData);
             this.topicQueueTable.put(topicConfig.getTopicName(), queueDataList);
-            log.info("new topic registered, {} {}", topicConfig.getTopicName(), queueData);
+            log.info("新主题注册 new topic registered, {} {}", topicConfig.getTopicName(), queueData);
         } else {
             boolean addNewOne = true;
 
@@ -419,7 +419,7 @@ public class RouteInfoManager {
             log.error("pickupTopicRouteData Exception", e);
         }
 
-        log.debug("pickupTopicRouteData {} {}", topic, topicRouteData);
+        log.debug("拉取主题路由信息 pickupTopicRouteData {} {}", topic, topicRouteData);
 
         if (foundBrokerData && foundQueueData) {
             return topicRouteData;

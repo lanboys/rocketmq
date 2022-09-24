@@ -243,7 +243,7 @@
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <append>true</append>
         <encoder>
-            <pattern>%d{yyy-MM-dd HH:mm:ss,GMT+8} %p %t - %m%n</pattern>
+            <pattern>%d{yyy-MM-dd HH:mm:ss.SSS,GMT+8} %p %t - %m%n</pattern>
             <charset class="java.nio.charset.Charset">UTF-8</charset>
         </encoder>
     </appender>
@@ -251,7 +251,7 @@
     <logger name="RocketmqBroker" additivity="false">
         <level value="INFO"/>
         <appender-ref ref="RocketmqBrokerAppender"/>
-        <!--<appender-ref ref="STDOUT"/>-->
+        <appender-ref ref="STDOUT"/>
     </logger>
 
     <logger name="RocketmqProtection" additivity="false">
@@ -284,7 +284,7 @@
     <logger name="RocketmqTransaction" additivity="false">
         <level value="INFO"/>
         <appender-ref ref="RocketmqTransactionAppender"/>
-        <appender-ref ref="STDOUT"/>
+        <!--<appender-ref ref="STDOUT"/>-->
     </logger>
 
     <logger name="RocketmqRebalanceLock" additivity="false">

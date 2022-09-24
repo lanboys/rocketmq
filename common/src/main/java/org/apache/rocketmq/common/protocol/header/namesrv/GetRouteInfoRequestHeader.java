@@ -39,4 +39,11 @@ public class GetRouteInfoRequestHeader implements CommandCustomHeader {
     public void setTopic(String topic) {
         this.topic = topic;
     }
+
+    @Override
+    public String toString() {
+        return "GetRouteInfoRequestHeader{" +
+                "topic='" + topic + '\'' +
+                '}';
+    }
 }

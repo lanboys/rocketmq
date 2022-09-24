@@ -16,6 +16,7 @@
  */
 package org.apache.rocketmq.remoting.protocol;
 
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.annotation.JSONField;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -36,6 +37,7 @@ public class RemotingCommand {
     public static final String SERIALIZE_TYPE_ENV = "ROCKETMQ_SERIALIZE_TYPE";
     public static final String REMOTING_VERSION_KEY = "rocketmq.remoting.version";
     private static final InternalLogger log = InternalLoggerFactory.getLogger(RemotingHelper.ROCKETMQ_REMOTING);
+    private static final InternalLogger consoleLog = InternalLoggerFactory.getLogger(RemotingHelper.ROCKETMQ_CONSOLE);
     private static final int RPC_TYPE = 0; // 0, REQUEST_COMMAND
     private static final int RPC_ONEWAY = 1; // 0, RPC
     private static final Map<Class<? extends CommandCustomHeader>, Field[]> CLASS_HASH_MAP =
@@ -86,6 +88,7 @@ public class RemotingCommand {
     }
 
     public static RemotingCommand createRequestCommand(int code, CommandCustomHeader customHeader) {
+        consoleLog.info("构建请求命令 RequestCode 类 code：[{}] ，命令头：{}", code, JSON.toJSONString(customHeader, false));
         RemotingCommand cmd = new RemotingCommand();
         cmd.setCode(code);
         cmd.customHeader = customHeader;

@@ -65,9 +65,11 @@ public class TopicConfigManager extends ConfigManager {
             topicConfig.setReadQueueNums(1);
             topicConfig.setWriteQueueNums(1);
             this.topicConfigTable.put(topicConfig.getTopicName(), topicConfig);
+            log.info("创建系统主题 topic:[{}] config:[{}] ", topicConfig.getTopicName(), topicConfig);
         }
         {
             // MixAll.AUTO_CREATE_TOPIC_KEY_TOPIC
+            // 自动创建 TBW102 主题
             if (this.brokerController.getBrokerConfig().isAutoCreateTopicEnable()) {
                 String topic = MixAll.AUTO_CREATE_TOPIC_KEY_TOPIC;
                 TopicConfig topicConfig = new TopicConfig(topic);
@@ -79,6 +81,7 @@ public class TopicConfigManager extends ConfigManager {
                 int perm = PermName.PERM_INHERIT | PermName.PERM_READ | PermName.PERM_WRITE;
                 topicConfig.setPerm(perm);
                 this.topicConfigTable.put(topicConfig.getTopicName(), topicConfig);
+                log.info("创建系统主题 topic:[{}] config:[{}] ", topicConfig.getTopicName(), topicConfig);
             }
         }
         {
@@ -89,6 +92,7 @@ public class TopicConfigManager extends ConfigManager {
             topicConfig.setReadQueueNums(1024);
             topicConfig.setWriteQueueNums(1024);
             this.topicConfigTable.put(topicConfig.getTopicName(), topicConfig);
+            log.info("创建系统主题 topic:[{}] config:[{}] ", topicConfig.getTopicName(), topicConfig);
         }
         {
 
@@ -101,6 +105,7 @@ public class TopicConfigManager extends ConfigManager {
             }
             topicConfig.setPerm(perm);
             this.topicConfigTable.put(topicConfig.getTopicName(), topicConfig);
+            log.info("创建系统主题 topic:[{}] config:[{}] ", topicConfig.getTopicName(), topicConfig);
         }
         {
 
@@ -115,6 +120,7 @@ public class TopicConfigManager extends ConfigManager {
             topicConfig.setWriteQueueNums(1);
             topicConfig.setPerm(perm);
             this.topicConfigTable.put(topicConfig.getTopicName(), topicConfig);
+            log.info("创建系统主题 topic:[{}] config:[{}] ", topicConfig.getTopicName(), topicConfig);
         }
         {
             // MixAll.OFFSET_MOVED_EVENT
@@ -124,6 +130,7 @@ public class TopicConfigManager extends ConfigManager {
             topicConfig.setReadQueueNums(1);
             topicConfig.setWriteQueueNums(1);
             this.topicConfigTable.put(topicConfig.getTopicName(), topicConfig);
+            log.info("创建系统主题 topic:[{}] config:[{}] ", topicConfig.getTopicName(), topicConfig);
         }
     }
 
@@ -155,14 +162,18 @@ public class TopicConfigManager extends ConfigManager {
                     if (topicConfig != null)
                         return topicConfig;
 
+                    // 通常是 TBW102
                     TopicConfig defaultTopicConfig = this.topicConfigTable.get(defaultTopic);
+                    log.info("模板主题：{}  {}", defaultTopic, defaultTopicConfig);
                     if (defaultTopicConfig != null) {
                         if (defaultTopic.equals(MixAll.AUTO_CREATE_TOPIC_KEY_TOPIC)) {
                             if (!this.brokerController.getBrokerConfig().isAutoCreateTopicEnable()) {
+                                // autoCreateTopicEnable = false , 把继承权限关闭
+                                // PermName.PERM_READ | PermName.PERM_WRITE = 6
                                 defaultTopicConfig.setPerm(PermName.PERM_READ | PermName.PERM_WRITE);
                             }
                         }
-
+                        // 主题是否允许被继承
                         if (PermName.isInherited(defaultTopicConfig.getPerm())) {
                             topicConfig = new TopicConfig(topic);
 
@@ -182,16 +193,17 @@ public class TopicConfigManager extends ConfigManager {
                             topicConfig.setTopicSysFlag(topicSysFlag);
                             topicConfig.setTopicFilterType(defaultTopicConfig.getTopicFilterType());
                         } else {
-                            log.warn("Create new topic failed, because the default topic[{}] has no perm [{}] producer:[{}]",
+                            log.warn("创建主题失败 Create new topic failed, because the default topic[{}] has no perm [{}] " +
+                                            "producer:[{}]",
                                 defaultTopic, defaultTopicConfig.getPerm(), remoteAddress);
                         }
                     } else {
-                        log.warn("Create new topic failed, because the default topic[{}] not exist. producer:[{}]",
+                        log.warn("创建主题失败 Create new topic failed, because the default topic[{}] not exist. producer:[{}]",
                             defaultTopic, remoteAddress);
                     }
 
                     if (topicConfig != null) {
-                        log.info("Create new topic by default topic:[{}] config:[{}] producer:[{}]",
+                        log.info("自动创建主题成功 Create new topic by default topic:[{}] config:[{}] producer:[{}]",
                             defaultTopic, topicConfig, remoteAddress);
 
                         this.topicConfigTable.put(topic, topicConfig);
@@ -244,7 +256,7 @@ public class TopicConfigManager extends ConfigManager {
                     topicConfig.setPerm(perm);
                     topicConfig.setTopicSysFlag(topicSysFlag);
 
-                    log.info("create new topic {}", topicConfig);
+                    log.info("创建主题 create new topic {}", topicConfig);
                     this.topicConfigTable.put(topic, topicConfig);
                     createNew = true;
                     this.dataVersion.nextVersion();
