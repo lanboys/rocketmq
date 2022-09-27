@@ -61,6 +61,10 @@ public class InnerTransactionProducer {
             throw new RuntimeException("消息发送失败了，整个事务需要回滚.. " + sendResult.getMsgId());
         }
 
+        // 模拟保存到事务表中，或者保存到业务表中的某个字段里，表明本地事务提交成功了
+        localTrans.put(sendResult.getMsgId(), "ok");
+        System.out.println("插入事务消息表成功... " + sendResult.getMsgId());
+
         try {
             // 模拟业务耗时操作
             TimeUnit.SECONDS.sleep(1);
@@ -105,9 +109,7 @@ public class InnerTransactionProducer {
         public LocalTransactionState executeLocalTransaction(Message msg, Object arg) {
             System.out.println("事务半消息发送成功，本地事务早已开始执行，但是未结束，本地事务状态未知... " + msg.getTransactionId());
 
-            // 模拟保存到事务表中，或者保存到业务表中的某个字段里，表明本地事务提交成功了
-            localTrans.put(msg.getTransactionId(), "ok");
-            System.out.println("插入事务消息表成功... " + msg.getTransactionId());
+            // 这里的异常会被吃掉，导致事务无法回滚？？？ 插入事务消息表操作不能这里做
 
             // 事务未结束，无法知道本地事务是提交还是回滚，只能等待事务回查来确定
             return LocalTransactionState.UNKNOW;
