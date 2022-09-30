@@ -303,7 +303,7 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
                 List<MessageExt> msgBackFailed = new ArrayList<MessageExt>(consumeRequest.getMsgs().size());
                 for (int i = ackIndex + 1; i < consumeRequest.getMsgs().size(); i++) {
                     MessageExt msg = consumeRequest.getMsgs().get(i);
-                    // 将未成功消费的消息发送回重试主题队列
+                    // 将未成功消费的消息发送回重试主题队列?
                     boolean result = this.sendMessageBack(msg, context);
                     // 仍然失败则稍后继续由当前消费者继续消费
                     if (!result) {

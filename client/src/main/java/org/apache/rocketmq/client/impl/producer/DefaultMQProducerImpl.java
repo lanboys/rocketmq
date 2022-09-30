@@ -318,6 +318,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                 thisHeader.setCommitLogOffset(checkRequestHeader.getCommitLogOffset());
                 thisHeader.setProducerGroup(producerGroup);
                 thisHeader.setTranStateTableOffset(checkRequestHeader.getTranStateTableOffset());
+                // ？？
                 thisHeader.setFromTransactionCheck(true);
 
                 String uniqueKey = message.getProperties().get(MessageConst.PROPERTY_UNIQ_CLIENT_MESSAGE_ID_KEYIDX);
@@ -1145,7 +1146,8 @@ public class DefaultMQProducerImpl implements MQProducerInner {
 
         LocalTransactionState localTransactionState = LocalTransactionState.UNKNOW;
         Throwable localException = null;
-        switch (sendResult.getSendStatus()) {
+        SendStatus sendStatus = sendResult.getSendStatus();
+        switch (sendStatus) {
             case SEND_OK: {
                 try {
                     if (sendResult.getTransactionId() != null) {
@@ -1179,6 +1181,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
             case FLUSH_DISK_TIMEOUT:
             case FLUSH_SLAVE_TIMEOUT:
             case SLAVE_NOT_AVAILABLE:
+                // 从节点挂了，事务消息也发送不成功
                 localTransactionState = LocalTransactionState.ROLLBACK_MESSAGE;
                 break;
             default:

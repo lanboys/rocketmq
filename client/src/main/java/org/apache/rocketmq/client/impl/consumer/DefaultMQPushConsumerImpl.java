@@ -503,7 +503,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
             String brokerAddr = (null != brokerName) ? this.mQClientFactory.findBrokerAddressInPublish(brokerName)
                 : RemotingHelper.parseSocketAddressAddr(msg.getStoreHost());
             // broker会先修改为重试队列主题，然后根据延时级别延时放入重试队列(会先放到延时队列里面)，如果是重试队列里面的消息再消费的话，
-            // 在消费前就会恢复原始的topic, 所以执行到这里的msg都是原始topic
+            // 在消费前就会恢复原始的topic, 所以执行到这里的msg都是原始topic??
             this.mQClientFactory.getMQClientAPIImpl().consumerSendMessageBack(brokerAddr, msg,
                 this.defaultMQPushConsumer.getConsumerGroup(), delayLevel, 5000, getMaxReconsumeTimes());
         } catch (Exception e) {
