@@ -79,7 +79,7 @@ public class BrokerStartup {
             log.info(tip);
             System.out.println("==========================================================");
             System.out.printf("ROCKETMQ_HOME 环境变量: %s%n", System.getProperty("rocketmq.home.dir"));
-            System.out.printf("数据及日志存放位置: %s%n", System.getProperty("user.home"));
+            System.out.printf("存储数据及日志存放总路径: %s%n", System.getProperty("user.home"));
             System.out.printf("配置文件路径: %s%n", configFile);
             System.out.printf("%s%n", tip);
             System.out.println("==========================================================");
@@ -158,12 +158,15 @@ public class BrokerStartup {
                             + File.separator + brokerConfig.getBrokerName()
                             + File.separator + brokerConfig.getBrokerId() + "-" + messageStoreConfig.getBrokerRole()
                     );
+                    System.out.println("重新设置系统变量 user.home");
 
                     // 重新设置 数据存储路径
                     messageStoreConfig.setStorePathRootDir(System.getProperty("user.home") + File.separator + "store");
                     messageStoreConfig.setStorePathCommitLog(System.getProperty("user.home") + File.separator + "store"
                             + File.separator + "commitlog");
 
+                    System.out.printf("数据存储路径: %s%n", messageStoreConfig.getStorePathRootDir());
+                    System.out.printf("commitLog存储路径: %s%n", messageStoreConfig.getStorePathCommitLog());
                 }
             }
 
