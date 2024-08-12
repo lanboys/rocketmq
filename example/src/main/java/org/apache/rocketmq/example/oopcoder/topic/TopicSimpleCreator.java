@@ -14,8 +14,8 @@ public class TopicSimpleCreator {
             // key 的作用，获取 broker 的地址
 
             String[] keys = {"cluster-1", "cluster-2", "broker-1", "standalone-cluster", "standalone-broker"};
-            // String key = "standalone-cluster";
-            // String key = "broker-1";
+            // String[] keys = {"broker-1"};
+            // String[] keys = {"standalone-cluster"};
 
             for (String key : keys) {
                 try {
@@ -25,6 +25,11 @@ public class TopicSimpleCreator {
                 }
             }
             System.out.println("topic were created .");
+
+            // topic一样，不同的broker，创建的队列数量不一样，是允许的，管理后台页面创建topic貌似有bug，达不到这种效果
+            // producer.createTopic("broker-1", "aaaaa", 1);
+            // producer.createTopic("broker-2", "aaaaa", 3);
+
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
