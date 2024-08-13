@@ -333,7 +333,8 @@
     </logger>
 
     <logger name="RocketmqClient" additivity="false">
-        <level value="INFO"/>
+        <!--<level value="INFO"/>-->
+        <level value="WARN"/>
         <appender-ref ref="STDOUT"/>
     </logger>
 
