@@ -18,6 +18,7 @@ package org.apache.rocketmq.example.simple;
 
 import org.apache.rocketmq.client.producer.DefaultMQProducer;
 import org.apache.rocketmq.client.producer.SendResult;
+import org.apache.rocketmq.common.UtilAll;
 import org.apache.rocketmq.common.message.Message;
 import org.apache.rocketmq.remoting.common.RemotingHelper;
 
@@ -33,7 +34,7 @@ public class Producer {
     // 故障延迟机制
     producer.setSendLatencyFaultEnable(true);
 
-    producer.setNamesrvAddr("localhost:9876");
+    producer.setNamesrvAddr("localhost:19876");
     producer.start();
 
     int index = 0;
@@ -42,15 +43,21 @@ public class Producer {
       if (read == 10) { // 回车
         continue;
       }
+
       int all = 1;
-      long l = System.currentTimeMillis();
-      for (int i = index; i < index + all; i++) {
+      String time = UtilAll.timeMillisToHumanString2(System.currentTimeMillis());
+      for (int i = 0; i < all; i++) {
         try {
-          byte[] bytes = ("我是消息-" + i + "-" + UUID.randomUUID().toString()).getBytes(RemotingHelper.DEFAULT_CHARSET);
-          Message msg = new Message("aaaaa", "Tag-index-" + i, "key-" + l + "-" + i, bytes);
+          byte[] bytes = ("我是消息-" + i + "-" + time).getBytes(RemotingHelper.DEFAULT_CHARSET);
+
+          Message msg = new Message("aaaaa", "Tag-index-" + i, "key-" + time + "-" + i, bytes);
           // 通常没抛异常表示发送消息成功了，只是状态有多种
+          System.out.println("====================================================");
+          System.out.printf("msg: %s%n", msg);
+          System.out.println("-----------");
           SendResult sendResult = producer.send(msg);
-          System.out.printf("%s%n", sendResult);
+          System.out.printf("sendResult: %s%n", sendResult);
+          System.out.println("====================================================");
           Thread.sleep(10);
         } catch (Exception e) {
           e.printStackTrace();

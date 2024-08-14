@@ -4,6 +4,7 @@ import org.apache.rocketmq.common.UtilAll;
 import org.apache.rocketmq.common.message.Message;
 import org.apache.rocketmq.common.message.MessageExt;
 
+import java.io.*;
 import java.util.Date;
 
 import static org.apache.rocketmq.common.message.MessageConst.PROPERTY_UNIQ_CLIENT_MESSAGE_ID_KEYIDX;
@@ -13,6 +14,14 @@ import static org.apache.rocketmq.common.message.MessageConst.PROPERTY_UNIQ_CLIE
  */
 
 public class PrintUtil {
+
+    public static void simpleDatePrintf(String format, Object... args) {
+        System.out.printf(new Date() + ": " + format, args);
+    }
+
+    public static void simpleDatePrintln(String s) {
+        System.out.println(new Date() + ": " + s);
+    }
 
     public static void printMessage(MessageExt msg) {
         System.out.println("--------------------------------------------");

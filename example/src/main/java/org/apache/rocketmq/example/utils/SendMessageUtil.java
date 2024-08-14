@@ -7,7 +7,10 @@ import org.apache.rocketmq.common.message.Message;
 import org.apache.rocketmq.remoting.common.RemotingHelper;
 
 import java.io.IOException;
-import java.util.UUID;
+import java.util.*;
+
+import static org.apache.rocketmq.example.utils.PrintUtil.simpleDatePrintf;
+import static org.apache.rocketmq.example.utils.PrintUtil.simpleDatePrintln;
 
 /**
  * Created by lanbing at 2022/9/21 15:46
@@ -43,16 +46,16 @@ public class SendMessageUtil {
                     byte[] bytes = ("消息-" + i + "-" + time).getBytes(RemotingHelper.DEFAULT_CHARSET);
                     Message msg = new Message("aaaaa", "tag-" + tag + "-" + i, "key-" + time, bytes);
                     // 通常没抛异常表示发送消息成功了，只是状态有多种
-                    System.out.println("====================================================");
+                    simpleDatePrintln("====================================================");
                     if (sendInTransaction) {
-                        System.out.println("事务消息...");
+                        simpleDatePrintln("事务消息...");
                     }
-                    System.out.printf("消息内容: %s%n", msg);
-                    System.out.println("----------------------------");
+                    simpleDatePrintf("消息内容: %s%n", msg);
+                    simpleDatePrintln("----------------------------");
                     SendResult sendResult = sendInTransaction ? producer.sendMessageInTransaction(msg, null) :
                             producer.send(msg);
-                    System.out.printf("发送结果: %s%n", sendResult);
-                    System.out.println("====================================================");
+                    simpleDatePrintf("发送结果: %s%n", sendResult);
+                    simpleDatePrintln("====================================================");
                     Thread.sleep(10);
                 } catch (Exception e) {
                     e.printStackTrace();

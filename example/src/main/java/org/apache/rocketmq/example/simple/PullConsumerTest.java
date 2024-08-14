@@ -28,23 +28,24 @@ public class PullConsumerTest {
 
   public static void main(String[] args) throws MQClientException, InterruptedException {
     DefaultMQPullConsumer consumer = new DefaultMQPullConsumer("a-group");
-    consumer.setNamesrvAddr("localhost:9876");
+    consumer.setNamesrvAddr("localhost:19876");
     consumer.start();
 
     MessageQueue mq = new MessageQueue();
     mq.setQueueId(0);
     mq.setTopic("aaaaa");
-    mq.setBrokerName("broker-1");
+    mq.setBrokerName("standalone-broker");
 
     long offset = 3;
     while (true) {
       try {
         long beginTime = System.currentTimeMillis();
+        // 自己手动同步请求去拉，还要维护消息消费进度
         PullResult pullResult = consumer.pullBlockIfNotFound(mq, null, offset, 3);
         System.out.printf("%s%n", System.currentTimeMillis() - beginTime);
         System.out.printf("%s%n", pullResult);
-        //offset = pullResult.getNextBeginOffset();
-        // 自己更新offset
+        offset = pullResult.getNextBeginOffset();
+        // 自己更新offset 可以试试 offset 一直保持不变，就会一直拉取一样的消息
         consumer.updateConsumeOffset(mq, offset);
         List<MessageExt> msgFoundList = pullResult.getMsgFoundList();
         for (MessageExt msg : msgFoundList) {
@@ -55,7 +56,7 @@ public class PullConsumerTest {
       } catch (Exception e) {
         e.printStackTrace();
       }
-      Thread.sleep(1 * 30 * 1000);
+      Thread.sleep(1 * 10 * 1000);
     }
     //consumer.shutdown();
   }

@@ -44,6 +44,9 @@ import java.util.Set;
  * In most scenarios, this is the mostly recommended class to consume messages.
  * </p>
  *
+ * // RocketMQ的push消费方式实现的简直不要太聪明 https://juejin.cn/post/7131263622352748575
+ * 从技术上讲，这个推送客户端实际上是底层拉取服务的包装器。具体来说，当从代理提取的消息到达时，调用已注册的回调处理程序来提供消息。
+ *
  * Technically speaking, this push client is virtually a wrapper of the underlying pull service. Specifically, on
  * arrival of messages pulled from brokers, it roughly invokes the registered callback handler to feed the messages.
  * </p>

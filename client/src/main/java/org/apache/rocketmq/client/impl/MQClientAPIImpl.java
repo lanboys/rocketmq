@@ -572,9 +572,11 @@ public class MQClientAPIImpl {
                 assert false;
                 return null;
             case ASYNC:
+                log.warn("消费者发送拉请求-异步方式-PUSH消费者");
                 this.pullMessageAsync(addr, request, timeoutMillis, pullCallback);
                 return null;
             case SYNC:
+                log.warn("消费者发送拉请求-同步方式-PULL消费者");
                 return this.pullMessageSync(addr, request, timeoutMillis);
             default:
                 assert false;
@@ -621,7 +623,9 @@ public class MQClientAPIImpl {
         final RemotingCommand request,
         final long timeoutMillis
     ) throws RemotingException, InterruptedException, MQBrokerException {
+        log.warn("同步请求开始...");
         RemotingCommand response = this.remotingClient.invokeSync(addr, request, timeoutMillis);
+        log.warn("同步请求返回...");
         assert response != null;
         return this.processPullResponse(response);
     }
