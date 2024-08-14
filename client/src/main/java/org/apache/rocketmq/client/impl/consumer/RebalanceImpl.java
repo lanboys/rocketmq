@@ -265,7 +265,7 @@ public abstract class RebalanceImpl {
             case CLUSTERING: {
                 // 获取topic下所有消费队列
                 Set<MessageQueue> mqSet = this.topicSubscribeInfoTable.get(topic);
-                // 主动获取同topic 同group 下所有的的消费者id
+                // 主动获取同topic 同 group 下所有的的消费者id
                 List<String> cidAll = this.mQClientFactory.findConsumerIdList(topic, consumerGroup);
                 if (null == mqSet) {
                     if (!topic.startsWith(MixAll.RETRY_GROUP_TOPIC_PREFIX)) {
@@ -294,6 +294,7 @@ public abstract class RebalanceImpl {
                             this.mQClientFactory.getClientId(),
                             mqAll,
                             cidAll);
+                        log.warn("给消费者分配队列");
                     } catch (Throwable e) {
                         log.error("AllocateMessageQueueStrategy.allocate Exception. allocateMessageQueueStrategyName={}", strategy.getName(),
                             e);
@@ -379,7 +380,7 @@ public abstract class RebalanceImpl {
         for (MessageQueue mq : mqSet) {
             if (!this.processQueueTable.containsKey(mq)) {
                 if (isOrder && !this.lock(mq)) {// 加锁
-                    log.warn("doRebalance, {}, add a new mq failed, {}, because lock failed", consumerGroup, mq);
+                    log.warn("重平衡 doRebalance, {}, add a new mq failed, {}, because lock failed", consumerGroup, mq);
                     /**
                      * 如果是顺序消息，需要向Broker申请锁队列，加锁成功才开始消费。
                      * 因为队列可能在被其它Consumer消费，还没有上报消费进度，直接拉取会造成消息重复、消费顺序错乱。
@@ -410,6 +411,7 @@ public abstract class RebalanceImpl {
             }
         }
         // 分发拉请求
+        log.warn("重平衡, 开始分发拉请求");
         this.dispatchPullRequest(pullRequestList);
 
         return changed;
