@@ -40,7 +40,7 @@ public class PullConsumerTest {
     while (true) {
       try {
         long beginTime = System.currentTimeMillis();
-        // 自己手动同步请求去拉
+        // 自己手动同步请求去拉，还要维护消息消费进度
         PullResult pullResult = consumer.pullBlockIfNotFound(mq, null, offset, 3);
         System.out.printf("%s%n", System.currentTimeMillis() - beginTime);
         System.out.printf("%s%n", pullResult);

@@ -199,6 +199,7 @@ public class PullAPIWrapper {
                 brokerAddr = computPullFromWhichFilterServer(mq.getTopic(), brokerAddr);
             }
 
+            log.warn("消费者发送拉请求，broker可以挂起一定时间再返回，减少拉取频率，PUSH/PULL都是这个方法");
             PullResult pullResult = this.mQClientFactory.getMQClientAPIImpl().pullMessage(
                 brokerAddr,
                 requestHeader,

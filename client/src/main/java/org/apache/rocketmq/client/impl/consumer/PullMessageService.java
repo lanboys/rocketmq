@@ -95,7 +95,7 @@ public class PullMessageService extends ServiceThread {
         while (!this.isStopped()) {
             try {
                 // 单线程 轮训拉消息请求，可以向多个不同的broker拉取，同一个broker也可以是多个不同topic
-                // 一个请求 对应一个队列
+                // 一个请求 对应一个消息队列
                 PullRequest pullRequest = this.pullRequestQueue.take();
                 this.pullMessage(pullRequest);
             } catch (InterruptedException ignored) {
