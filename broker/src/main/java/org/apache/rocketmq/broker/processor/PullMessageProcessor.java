@@ -80,6 +80,8 @@ public class PullMessageProcessor implements NettyRequestProcessor {
     @Override
     public RemotingCommand processRequest(final ChannelHandlerContext ctx,
         RemotingCommand request) throws RemotingCommandException {
+        // brokerAllowSuspend 最后一个参数，这个请求可以挂起
+        log.warn("接受到消费者的拉请求，允许挂起请求，实现长轮询");
         return this.processRequest(ctx.channel(), request, true);
     }
 
@@ -289,7 +291,8 @@ public class PullMessageProcessor implements NettyRequestProcessor {
             } else {
                 responseHeader.setSuggestWhichBrokerId(MixAll.MASTER_ID);
             }
-            log.info("最终建议的brokerId: {}, slaveReadEnable: {} ", responseHeader.getSuggestWhichBrokerId(), this.brokerController.getBrokerConfig().isSlaveReadEnable());
+            log.debug("最终建议的brokerId: {}, slaveReadEnable: {} ", responseHeader.getSuggestWhichBrokerId(),
+                this.brokerController.getBrokerConfig().isSlaveReadEnable());
 
             switch (getMessageResult.getStatus()) {
                 case FOUND:
@@ -432,9 +435,10 @@ public class PullMessageProcessor implements NettyRequestProcessor {
                         String topic = requestHeader.getTopic();
                         long offset = requestHeader.getQueueOffset();
                         int queueId = requestHeader.getQueueId();
-                        // Long Polling
+                        // Long Polling 长轮询
                         PullRequest pullRequest = new PullRequest(request, channel, pollingTimeMills,
                             this.brokerController.getMessageStore().now(), offset, subscriptionData, messageFilter);
+                        log.info("长轮询，挂起消费者的拉取请求");
                         this.brokerController.getPullRequestHoldService().suspendPullRequest(topic, queueId, pullRequest);
                         response = null;
                         break;
@@ -555,7 +559,12 @@ public class PullMessageProcessor implements NettyRequestProcessor {
             @Override
             public void run() {
                 try {
-                    // 这个请求不允许挂起
+                    // 最后一个参数 brokerAllowSuspend ，这个请求不允许挂起
+                    // RocketMQ的push消费方式实现的简直不要太聪明 https://juejin.cn/post/7131263622352748575
+
+                    // 1.有新消息
+                    // 2.长轮询超时了
+                    log.warn("处理拉请求，不允许挂起，需要给消费者响应");
                     final RemotingCommand response = PullMessageProcessor.this.processRequest(channel, request, false);
 
                     if (response != null) {
