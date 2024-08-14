@@ -1160,8 +1160,10 @@ public class CommitLog {
 
             while (!this.isStopped()) {
                 try {
+                    // 1.交换桶，或者休息一会等桶装满一点，再交换桶，本质动作都是交换桶
                     this.waitForRunning(10);
                     long start = System.currentTimeMillis();
+                    // 2.提交，清空桶
                     this.doCommit();
                     long end = System.currentTimeMillis() - start;
                     if (end > 0) {

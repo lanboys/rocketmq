@@ -88,7 +88,7 @@ public class RemotingCommand {
     }
 
     public static RemotingCommand createRequestCommand(int code, CommandCustomHeader customHeader) {
-        consoleLog.info("构建请求命令 RequestCode 类 code：[{}] ，命令头：{}", code, JSON.toJSONString(customHeader, false));
+        consoleLog.debug("构建请求命令 RequestCode 类 code：[{}] ，命令头：{}", code, JSON.toJSONString(customHeader, false));
         RemotingCommand cmd = new RemotingCommand();
         cmd.setCode(code);
         cmd.customHeader = customHeader;

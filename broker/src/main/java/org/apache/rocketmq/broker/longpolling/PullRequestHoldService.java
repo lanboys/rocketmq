@@ -43,6 +43,7 @@ public class PullRequestHoldService extends ServiceThread {
     }
 
     public void suspendPullRequest(final String topic, final int queueId, final PullRequest pullRequest) {
+        // 拉请求合并成一个列表对象，方便查询新消息
         String key = this.buildKey(topic, queueId);
         ManyPullRequest mpr = this.pullRequestTable.get(key);
         if (null == mpr) {
@@ -70,7 +71,7 @@ public class PullRequestHoldService extends ServiceThread {
         while (!this.isStopped()) {
             try {
                 if (this.brokerController.getBrokerConfig().isLongPollingEnable()) {
-                    this.waitForRunning(5 * 1000);
+                    this.waitForRunning(5 * 1000);//长轮询每次最多休眠5s
                 } else {
                     this.waitForRunning(this.brokerController.getBrokerConfig().getShortPollingTimeMills());
                 }
@@ -95,6 +96,7 @@ public class PullRequestHoldService extends ServiceThread {
     }
 
     private void checkHoldRequest() {
+        log.warn("检查挂起的消费者拉请求，数量：{}", this.pullRequestTable.keySet().size());
         for (String key : this.pullRequestTable.keySet()) {
             String[] kArray = key.split(TOPIC_QUEUEID_SEPARATOR);
             if (2 == kArray.length) {
@@ -145,7 +147,7 @@ public class PullRequestHoldService extends ServiceThread {
 
                         if (match) {
                             try {
-                                // 重新提交拉请求
+                                log.warn("长轮询，有新的消息，重新提交拉请求，获取新消息返回给消费者");
                                 this.brokerController.getPullMessageProcessor().executeRequestWhenWakeup(request.getClientChannel(),
                                     request.getRequestCommand());
                             } catch (Throwable e) {
@@ -158,7 +160,7 @@ public class PullRequestHoldService extends ServiceThread {
                     // request.getSuspendTimestamp() 开始挂起的时间戳
                     if (System.currentTimeMillis() >= (request.getSuspendTimestamp() + request.getTimeoutMillis())) {
                         try {
-                            // 超时 重新提交拉请求
+                            log.warn("长轮询，超时，重新提交拉请求，不管有没有数据都要返回给消费者，超时时间：{}", request.getTimeoutMillis());
                             this.brokerController.getPullMessageProcessor().executeRequestWhenWakeup(request.getClientChannel(),
                                 request.getRequestCommand());
                         } catch (Throwable e) {
@@ -172,6 +174,7 @@ public class PullRequestHoldService extends ServiceThread {
 
                 if (!replayList.isEmpty()) {
                     mpr.addPullRequest(replayList);//重新放回队列中
+                    log.warn("长轮询，无新消息，不超时的拉请求重新放回挂起队列中，等待下一次检查");
                 }
             }
         }

@@ -98,21 +98,26 @@ public abstract class ServiceThread implements Runnable {
     }
 
     public void wakeup() {
+        // 告诉线程别再休眠了，要干活了
         if (hasNotified.compareAndSet(false, true)) {
             waitPoint.countDown(); // notify
         }
     }
 
     protected void waitForRunning(long interval) {
+        // 如果有提醒，就需要立马去干活了，本次循环就不睡眠了，类似：if (flag = true) { flag = false }
         if (hasNotified.compareAndSet(true, false)) {
+            // hasNotified = false
             this.onWaitEnd();
             return;
         }
+        // hasNotified = false
 
         //entry to wait
         waitPoint.reset();
 
         try {
+            // 准备挂起线程，竟然是用自己定义的 CountDownLatch2 实现的，直接借鉴
             waitPoint.await(interval, TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             log.error("Interrupted", e);
@@ -123,6 +128,7 @@ public abstract class ServiceThread implements Runnable {
     }
 
     protected void onWaitEnd() {
+        //  结束等待，在子类有实现
     }
 
     public boolean isStopped() {

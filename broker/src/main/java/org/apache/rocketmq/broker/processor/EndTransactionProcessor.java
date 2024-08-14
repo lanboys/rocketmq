@@ -99,8 +99,8 @@ public class EndTransactionProcessor implements NettyRequestProcessor {
         } else {
             switch (requestHeader.getCommitOrRollback()) {
                 case MessageSysFlag.TRANSACTION_NOT_TYPE: {
-                    LOGGER.warn("状态未知 The producer[{}] end transaction in sending message,  and it's pending status."
-                            + "RequestHeader: {} Remark: {}",
+                    LOGGER.warn("事务消息状态未知 The producer[{}] end transaction in sending message,  and it's pending " +
+                            "status. RequestHeader: {} Remark: {}",
                         RemotingHelper.parseChannelRemoteAddr(ctx.channel()),
                         requestHeader.toString(),
                         request.getRemark());

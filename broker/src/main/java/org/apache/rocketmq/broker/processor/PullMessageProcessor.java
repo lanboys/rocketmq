@@ -81,7 +81,9 @@ public class PullMessageProcessor implements NettyRequestProcessor {
     public RemotingCommand processRequest(final ChannelHandlerContext ctx,
         RemotingCommand request) throws RemotingCommandException {
         // brokerAllowSuspend 最后一个参数，这个请求可以挂起
-        log.warn("接受到消费者的拉请求，允许挂起请求，实现长轮询");
+
+        // 推拉实现方式是一样的，都可以挂起，区别在于消费者客户端，推客户端是异步请求的，拉客户端是同步请求，会阻塞等待长轮询完成再返回给用户
+        log.warn("接受到消费者的拉请求，允许挂起请求，实现长轮询，PUSH/PULL入口都是这里");
         return this.processRequest(ctx.channel(), request, true);
     }
 
@@ -559,8 +561,11 @@ public class PullMessageProcessor implements NettyRequestProcessor {
             @Override
             public void run() {
                 try {
-                    // 最后一个参数 brokerAllowSuspend ，这个请求不允许挂起
                     // RocketMQ的push消费方式实现的简直不要太聪明 https://juejin.cn/post/7131263622352748575
+
+                    // 推、拉都是客户端主动请求broker拉取数据，
+                    // 推方式，是rocketmq帮使用者封装好了定时拉取代码，看起来像推送消息一样
+                    // 拉方式，需要使用者手动拉取，手动维护消费进度
 
                     // 1.有新消息
                     // 2.长轮询超时了
